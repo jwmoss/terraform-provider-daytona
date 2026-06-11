@@ -1,6 +1,6 @@
 # Daytona API Coverage
 
-This provider is audited against Daytona's generated OpenAPI client in `/Users/jwmoss/github/daytona/libs/api-client-go` at Daytona source commit `a6d3f1284`.
+This provider is audited against Daytona's generated OpenAPI client in `/Users/jwmoss/github/daytona/libs/api-client-go` at Daytona source commit `3a6dbc150` and client release `v0.187.0`.
 
 The Terraform surface focuses on durable SaaS infrastructure and read-only discovery. Runtime actions, deprecated toolbox proxy operations, admin-only internals, and endpoints that only validate ephemeral tokens are intentionally excluded unless they map cleanly to Terraform state.
 
@@ -15,10 +15,10 @@ The Terraform surface focuses on durable SaaS infrastructure and read-only disco
 | Jobs | `daytona_job` and `daytona_jobs` cover job read/list. Job status mutation is runtime-owned and not exposed. |
 | Object storage | `daytona_object_storage_push_access` covers temporary object-storage push credentials. |
 | Organizations | `daytona_organization` resource and `daytona_organization`, `daytona_organizations`, `daytona_organization_usage`, and `daytona_organization_audit_logs` data sources cover organization CRUD, default region, quotas/rate limits, experimental config, sandbox egress default, usage, and audit logs. |
-| Organization invitations | `daytona_organization_invitation`, `daytona_organization_invitation`, and `daytona_organization_invitations` cover invitation create/update/cancel and read/list. Accept/decline invitations are user actions and not modeled as Terraform-managed state. |
+| Organization invitations | `daytona_organization_invitation` resource plus `daytona_organization_invitation` and `daytona_organization_invitations` data sources cover invitation create/update/cancel and read/list. Accept/decline invitations are user actions and not modeled as Terraform-managed state. |
 | Organization members | `daytona_organization_member_access`, `daytona_organization_member`, and `daytona_organization_members` cover member access management and read/list. |
 | Organization OTEL config | `daytona_organization_otel_config` resource and data source cover get/update/delete of organization OpenTelemetry export settings. |
-| Organization roles | `daytona_organization_role`, `daytona_organization_role`, and `daytona_organization_roles` cover role create/update/delete and read/list. |
+| Organization roles | `daytona_organization_role` resource plus `daytona_organization_role` and `daytona_organization_roles` data sources cover role create/update/delete and read/list. |
 | Regions | `daytona_region`, `daytona_region`, `daytona_regions`, and `daytona_shared_regions` cover customer region CRUD and region discovery. Region credential regeneration endpoints are action-style secret rotation and not exposed yet. |
 | Runners | `daytona_runner`, `daytona_runner`, and `daytona_runners` cover runner registration, read/list, and deletion. Managed-service `/api/runners` currently returned `404 Cannot GET /api/runners` during live verification and needs Daytona-side route/account confirmation. |
 | Sandboxes | `daytona_sandbox`, `daytona_sandbox`, and `daytona_sandboxes` cover sandbox create/read/list/delete, desired started/stopped/archived state, public status, labels, CPU/memory/disk resize, auto-stop/archive/delete intervals, and network settings supported by the current resource model. |

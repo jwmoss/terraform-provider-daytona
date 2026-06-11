@@ -21,8 +21,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/daytonaio/daytona/libs/api-client-go v0.186.1-0.20260610143640-a6d3f12844e5 h1:CZuLJ4lSTMysUpFYGbz6xDjg8h/WDNAn7r5VgQTY2PY=
-github.com/daytonaio/daytona/libs/api-client-go v0.186.1-0.20260610143640-a6d3f12844e5/go.mod h1:FzTxtFuR9utJw43WBUVdX9AF4rALJlSKvx4bddZthxs=
+github.com/daytonaio/daytona/libs/api-client-go v0.187.0 h1:AIxduVQM9wygYIDrJqGuEMKnm//EhkVWQLOV09Td/SA=
+github.com/daytonaio/daytona/libs/api-client-go v0.187.0/go.mod h1:FzTxtFuR9utJw43WBUVdX9AF4rALJlSKvx4bddZthxs=
 github.com/emirpasic/gods v1.18.1 h1:FXtiHYKDGKCW2KzwZKx0iC0PQmdlorYgdFG9jPXJ1Bc=
 github.com/emirpasic/gods v1.18.1/go.mod h1:8tpGGwCnJ5H4r6BWwaV6OrWmMoPhUl5jm/FMNAnJvWQ=
 github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYFFOfk=
