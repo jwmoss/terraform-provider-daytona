@@ -1,5 +1,10 @@
 # Code of Conduct
 
-HashiCorp Community Guidelines apply to you when interacting with the community here on GitHub and contributing code.
+This project follows a straightforward contributor standard:
 
-Please read the full text at https://www.hashicorp.com/community-guidelines
+- Be respectful and constructive.
+- Keep technical discussions focused on the work.
+- Do not harass, threaten, or discriminate against other contributors.
+- Assume public issue and pull request discussions are visible to users evaluating the provider.
+
+Maintainers may edit, hide, or remove comments and contributions that violate these expectations.
