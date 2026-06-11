@@ -1,3 +1,5 @@
+GORELEASER_VERSION ?= v2.15.4
+
 default: fmt lint install generate
 
 build:
@@ -21,4 +23,10 @@ test:
 testacc:
 	TF_ACC=1 go test -v -cover -timeout 120m ./...
 
-.PHONY: fmt lint test testacc build install generate
+release-check:
+	go run github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION) check
+
+release-snapshot:
+	go run github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION) release --snapshot --clean --skip=sign
+
+.PHONY: fmt lint test testacc build install generate release-check release-snapshot
