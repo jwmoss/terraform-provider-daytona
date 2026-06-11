@@ -26,6 +26,7 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_current_api_key`
   - `daytona_current_user`
   - `daytona_docker_registries`
+  - `daytona_docker_registry`
   - `daytona_docker_registry_push_access`
   - `daytona_job`
   - `daytona_jobs`
@@ -37,6 +38,7 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_organization_roles`
   - `daytona_organization_usage`
   - `daytona_organizations`
+  - `daytona_region`
   - `daytona_regions`
   - `daytona_runners`
   - `daytona_sandbox_build_logs_url`
@@ -46,6 +48,7 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_shared_regions`
   - `daytona_snapshot_build_logs_url`
   - `daytona_snapshots`
+  - `daytona_volume`
   - `daytona_volumes`
   - `daytona_webhook_app_portal_access`
   - `daytona_webhook_initialization_status`
