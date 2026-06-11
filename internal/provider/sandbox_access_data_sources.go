@@ -15,6 +15,7 @@ import (
 var _ datasource.DataSource = &SandboxSSHAccessDataSource{}
 var _ datasource.DataSource = &SandboxBuildLogsURLDataSource{}
 var _ datasource.DataSource = &SandboxPortPreviewURLDataSource{}
+var _ datasource.DataSource = &SandboxSignedPortPreviewURLDataSource{}
 var _ datasource.DataSource = &SnapshotBuildLogsURLDataSource{}
 
 func NewSandboxSSHAccessDataSource() datasource.DataSource {
@@ -27,6 +28,10 @@ func NewSandboxBuildLogsURLDataSource() datasource.DataSource {
 
 func NewSandboxPortPreviewURLDataSource() datasource.DataSource {
 	return &SandboxPortPreviewURLDataSource{}
+}
+
+func NewSandboxSignedPortPreviewURLDataSource() datasource.DataSource {
+	return &SandboxSignedPortPreviewURLDataSource{}
 }
 
 func NewSnapshotBuildLogsURLDataSource() datasource.DataSource {
@@ -262,6 +267,93 @@ func (d *SandboxPortPreviewURLDataSource) Read(ctx context.Context, req datasour
 
 	data.ID = types.StringValue(fmt.Sprintf("%s:%d:port_preview_url", data.SandboxIDOrName.ValueString(), data.Port.ValueInt64()))
 	data.SandboxID = types.StringValue(preview.SandboxId)
+	data.URL = types.StringValue(preview.Url)
+	data.Token = types.StringValue(preview.Token)
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+type SandboxSignedPortPreviewURLDataSource struct {
+	client *daytonaClient
+}
+
+type sandboxSignedPortPreviewURLDataSourceModel struct {
+	ID               types.String `tfsdk:"id"`
+	SandboxIDOrName  types.String `tfsdk:"sandbox_id_or_name"`
+	OrganizationID   types.String `tfsdk:"organization_id"`
+	Port             types.Int64  `tfsdk:"port"`
+	ExpiresInSeconds types.Int64  `tfsdk:"expires_in_seconds"`
+	SandboxID        types.String `tfsdk:"sandbox_id"`
+	URL              types.String `tfsdk:"url"`
+	Token            types.String `tfsdk:"token"`
+}
+
+func (d *SandboxSignedPortPreviewURLDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_sandbox_signed_port_preview_url"
+}
+
+func (d *SandboxSignedPortPreviewURLDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Reads a signed preview URL for a Daytona sandbox port.",
+		Attributes: map[string]schema.Attribute{
+			"id":                 computedDataSourceStringAttribute("Data source identifier."),
+			"sandbox_id_or_name": requiredDataSourceStringAttribute("Sandbox ID or name."),
+			"organization_id":    optionalOrganizationIDDataSourceStringAttribute(),
+			"port": schema.Int64Attribute{
+				Required:            true,
+				MarkdownDescription: "Sandbox port number.",
+			},
+			"expires_in_seconds": schema.Int64Attribute{
+				Optional:            true,
+				MarkdownDescription: "Expiration time in seconds. Daytona defaults to 60 seconds when omitted.",
+			},
+			"sandbox_id": computedDataSourceStringAttribute("Sandbox ID."),
+			"url":        sensitiveComputedDataSourceStringAttribute("Signed sandbox port preview URL."),
+			"token":      sensitiveComputedDataSourceStringAttribute("Signed sandbox port preview access token."),
+		},
+	}
+}
+
+func (d *SandboxSignedPortPreviewURLDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	client := configureDataSourceClient(req.ProviderData, &resp.Diagnostics)
+	if client == nil {
+		return
+	}
+	d.client = client
+}
+
+func (d *SandboxSignedPortPreviewURLDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data sandboxSignedPortPreviewURLDataSourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	request := d.client.api.SandboxAPI.GetSignedPortPreviewUrl(ctx, data.SandboxIDOrName.ValueString(), int32(data.Port.ValueInt64()))
+	if expiresInSeconds := optionalInt32(data.ExpiresInSeconds); expiresInSeconds != nil {
+		request = request.ExpiresInSeconds(*expiresInSeconds)
+	}
+	if organizationID := optionalString(data.OrganizationID); organizationID != nil {
+		request = request.XDaytonaOrganizationID(*organizationID)
+	}
+
+	preview, httpResp, err := request.Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to read Daytona sandbox signed port preview URL", "read sandbox signed port preview URL", httpResp, err)
+		return
+	}
+	if preview == nil {
+		resp.Diagnostics.AddError(
+			"Empty Daytona sandbox signed port preview URL response",
+			"Daytona returned a successful response without sandbox signed port preview URL data.",
+		)
+		return
+	}
+
+	data.ID = types.StringValue(fmt.Sprintf("%s:%d:signed_port_preview_url", data.SandboxIDOrName.ValueString(), data.Port.ValueInt64()))
+	data.SandboxID = types.StringValue(preview.SandboxId)
+	data.Port = types.Int64Value(int64(preview.Port))
 	data.URL = types.StringValue(preview.Url)
 	data.Token = types.StringValue(preview.Token)
 
