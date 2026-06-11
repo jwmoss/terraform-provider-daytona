@@ -75,13 +75,13 @@ func (r *SandboxResource) Schema(ctx context.Context, req resource.SchemaRequest
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"name": replaceStringAttribute("Sandbox name. If omitted, Daytona uses the sandbox ID as the name."),
+			"name": optionalComputedReplaceStringAttribute("Sandbox name. If omitted, Daytona uses the sandbox ID as the name."),
 			"organization_id": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Daytona organization ID that owns the sandbox.",
 			},
 			"snapshot": replaceStringAttribute("Snapshot ID or name used to create the sandbox."),
-			"user":     replaceStringAttribute("User associated with the sandbox project."),
+			"user":     optionalComputedReplaceStringAttribute("User associated with the sandbox project."),
 			"env": schema.MapAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
@@ -112,14 +112,14 @@ func (r *SandboxResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 				MarkdownDescription: "Comma-separated list of allowed CIDR network addresses.",
 			},
-			"target":                replaceStringAttribute("Target region where the sandbox is created."),
-			"cpu":                   optionalInt64Attribute("CPU cores allocated to the sandbox."),
-			"gpu":                   replaceInt64Attribute("GPU units allocated to the sandbox."),
-			"memory":                optionalInt64Attribute("Memory allocated to the sandbox in GB."),
-			"disk":                  optionalInt64Attribute("Disk allocated to the sandbox in GB."),
-			"auto_stop_interval":    optionalInt64Attribute("Auto-stop interval in minutes. Use 0 to disable."),
-			"auto_archive_interval": optionalInt64Attribute("Auto-archive interval in minutes."),
-			"auto_delete_interval":  optionalInt64Attribute("Auto-delete interval in minutes. Negative values disable auto-delete."),
+			"target":                optionalComputedReplaceStringAttribute("Target region where the sandbox is created."),
+			"cpu":                   optionalComputedInt64Attribute("CPU cores allocated to the sandbox."),
+			"gpu":                   optionalComputedReplaceInt64Attribute("GPU units allocated to the sandbox."),
+			"memory":                optionalComputedInt64Attribute("Memory allocated to the sandbox in GB."),
+			"disk":                  optionalComputedInt64Attribute("Disk allocated to the sandbox in GB."),
+			"auto_stop_interval":    optionalComputedInt64Attribute("Auto-stop interval in minutes. Use 0 to disable."),
+			"auto_archive_interval": optionalComputedInt64Attribute("Auto-archive interval in minutes."),
+			"auto_delete_interval":  optionalComputedInt64Attribute("Auto-delete interval in minutes. Negative values disable auto-delete."),
 			"linked_sandbox":        replaceStringAttribute("Existing sandbox ID or name to link the new sandbox to."),
 			"desired_state": schema.StringAttribute{
 				Optional:            true,
@@ -163,6 +163,18 @@ func replaceStringAttribute(description string) schema.StringAttribute {
 	}
 }
 
+func optionalComputedReplaceStringAttribute(description string) schema.StringAttribute {
+	return schema.StringAttribute{
+		Optional:            true,
+		Computed:            true,
+		MarkdownDescription: description,
+		PlanModifiers: []planmodifier.String{
+			stringplanmodifier.UseStateForUnknown(),
+			stringplanmodifier.RequiresReplace(),
+		},
+	}
+}
+
 func replaceInt64Attribute(description string) schema.Int64Attribute {
 	return schema.Int64Attribute{
 		Optional:            true,
@@ -173,10 +185,26 @@ func replaceInt64Attribute(description string) schema.Int64Attribute {
 	}
 }
 
-func optionalInt64Attribute(description string) schema.Int64Attribute {
+func optionalComputedReplaceInt64Attribute(description string) schema.Int64Attribute {
 	return schema.Int64Attribute{
 		Optional:            true,
+		Computed:            true,
 		MarkdownDescription: description,
+		PlanModifiers: []planmodifier.Int64{
+			int64planmodifier.UseStateForUnknown(),
+			int64planmodifier.RequiresReplace(),
+		},
+	}
+}
+
+func optionalComputedInt64Attribute(description string) schema.Int64Attribute {
+	return schema.Int64Attribute{
+		Optional:            true,
+		Computed:            true,
+		MarkdownDescription: description,
+		PlanModifiers: []planmodifier.Int64{
+			int64planmodifier.UseStateForUnknown(),
+		},
 	}
 }
 
