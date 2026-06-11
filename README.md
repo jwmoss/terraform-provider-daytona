@@ -150,6 +150,13 @@ Generate provider documentation:
 make generate
 ```
 
+Validate release packaging:
+
+```shell
+make release-check
+make release-snapshot
+```
+
 ## Repository Status
 
 This provider was scaffolded from `hashicorp/terraform-provider-scaffolding-framework` and then converted to a Daytona-specific provider module at `github.com/jwmoss/terraform-provider-daytona`.
