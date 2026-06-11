@@ -21,7 +21,7 @@ The Terraform surface focuses on durable SaaS infrastructure and read-only disco
 | Organization roles | `daytona_organization_role`, `daytona_organization_role`, and `daytona_organization_roles` cover role create/update/delete and read/list. |
 | Regions | `daytona_region`, `daytona_region`, `daytona_regions`, and `daytona_shared_regions` cover customer region CRUD and region discovery. Region credential regeneration endpoints are action-style secret rotation and not exposed yet. |
 | Runners | `daytona_runner`, `daytona_runner`, and `daytona_runners` cover runner registration, read/list, and deletion. Managed-service `/api/runners` currently returned `404 Cannot GET /api/runners` during live verification and needs Daytona-side route/account confirmation. |
-| Sandboxes | `daytona_sandbox`, `daytona_sandbox`, and `daytona_sandboxes` cover sandbox create/read/list/delete, desired started/stopped/archived state, public status, and network settings supported by the current resource model. |
+| Sandboxes | `daytona_sandbox`, `daytona_sandbox`, and `daytona_sandboxes` cover sandbox create/read/list/delete, desired started/stopped/archived state, public status, labels, CPU/memory/disk resize, auto-stop/archive/delete intervals, and network settings supported by the current resource model. |
 | Sandbox access and relationships | `daytona_sandbox_ssh_access`, `daytona_sandbox_build_logs_url`, `daytona_sandbox_port_preview_url`, `daytona_sandbox_toolbox_proxy_url`, `daytona_sandbox_organization`, `daytona_sandbox_region_quota`, `daytona_sandbox_parent`, `daytona_sandbox_ancestors`, and `daytona_sandbox_forks` cover Terraform-readable sandbox access URLs and topology/quota lookups. |
 | Sandbox observability | `daytona_sandbox_logs`, `daytona_sandbox_traces`, `daytona_sandbox_trace_spans`, and `daytona_sandbox_metrics` cover bounded OpenTelemetry log, trace, span, and metric reads for a sandbox. |
 | Snapshots | `daytona_snapshot`, `daytona_snapshot`, `daytona_snapshots`, and `daytona_snapshot_build_logs_url` cover snapshot create/read/list/delete and build-log URL discovery. Snapshot activate/deactivate endpoints are runtime actions and not modeled as resources. |
@@ -37,9 +37,13 @@ The Terraform surface focuses on durable SaaS infrastructure and read-only disco
 | Preview token validation APIs | `isSandboxPublic`, `isValidAuthToken`, `hasSandboxAccess`, and `getSandboxIdFromSignedPreviewUrlToken` validate request-time access/token state and do not provision infrastructure. |
 | Signed preview URL expiration | `expireSignedPortPreviewUrl` invalidates an ephemeral token and has no stable desired state. |
 | SSH access validation and revocation | Temporary SSH access creation is exposed as a data source; validation/revocation are request-time operational actions. |
+| Sandbox runtime derivation and maintenance actions | `recoverSandbox`, `createBackup`, `createSandboxSnapshot`, `forkSandbox`, and `updateLastActivity` are imperative runtime actions or derived-object creation flows rather than stable desired-state attributes of the sandbox resource. |
+| Runner self-service and job queue APIs | Authenticated-runner info, runner sandbox assignment, runner healthcheck, job polling, and job status updates are runner-agent protocol endpoints, not user-managed Terraform infrastructure. |
 | Runner scheduling/draining updates | Daytona's OpenAPI describes body fields for scheduling/draining, but the generated Go client request types do not currently expose body setters for those endpoints. |
 | Region credential regeneration | Proxy, SSH gateway, and snapshot-manager credential regeneration endpoints rotate secrets as one-off actions. Region create stores initial generated credentials as sensitive Terraform state. |
 | Organization invitation accept/decline/leave/suspend | These are user/account lifecycle actions or admin/suspension actions, not desired-state infrastructure resources. |
+| User account linking and MFA actions | Account link/unlink and SMS MFA enrollment are interactive user-security flows, not organization infrastructure state. |
+| Sandbox-auth-token OTEL lookup | `getOrganizationOtelConfigBySandboxAuthToken` is a token-scoped runtime lookup for sandbox agents; the organization-scoped OTEL resource and data source cover Terraform-managed export configuration. |
 
 ## Live Verification Gaps
 
