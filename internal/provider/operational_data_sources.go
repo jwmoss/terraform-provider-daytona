@@ -25,6 +25,7 @@ var _ datasource.DataSource = &OrganizationUsageDataSource{}
 var _ datasource.DataSource = &OrganizationAuditLogsDataSource{}
 var _ datasource.DataSource = &JobDataSource{}
 var _ datasource.DataSource = &JobsDataSource{}
+var _ datasource.DataSource = &DockerRegistryPushAccessDataSource{}
 var _ datasource.DataSource = &ObjectStoragePushAccessDataSource{}
 
 func NewConfigDataSource() datasource.DataSource {
@@ -53,6 +54,10 @@ func NewJobDataSource() datasource.DataSource {
 
 func NewJobsDataSource() datasource.DataSource {
 	return &JobsDataSource{}
+}
+
+func NewDockerRegistryPushAccessDataSource() datasource.DataSource {
+	return &DockerRegistryPushAccessDataSource{}
 }
 
 func NewObjectStoragePushAccessDataSource() datasource.DataSource {
@@ -768,6 +773,90 @@ func (d *JobsDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 
 type ObjectStoragePushAccessDataSource struct {
 	client *daytonaClient
+}
+
+type DockerRegistryPushAccessDataSource struct {
+	client *daytonaClient
+}
+
+type dockerRegistryPushAccessDataSourceModel struct {
+	ID             types.String `tfsdk:"id"`
+	OrganizationID types.String `tfsdk:"organization_id"`
+	RegionID       types.String `tfsdk:"region_id"`
+	Username       types.String `tfsdk:"username"`
+	Secret         types.String `tfsdk:"secret"`
+	RegistryURL    types.String `tfsdk:"registry_url"`
+	RegistryID     types.String `tfsdk:"registry_id"`
+	Project        types.String `tfsdk:"project"`
+	ExpiresAt      types.String `tfsdk:"expires_at"`
+}
+
+func (d *DockerRegistryPushAccessDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_docker_registry_push_access"
+}
+
+func (d *DockerRegistryPushAccessDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Reads temporary Daytona Docker registry credentials for pushing snapshots.",
+		Attributes: map[string]schema.Attribute{
+			"id": computedDataSourceStringAttribute("Data source identifier."),
+			"organization_id": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Daytona organization ID. Defaults to the provider-level organization when configured.",
+			},
+			"region_id": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Daytona region ID where the pushed snapshot will be available. Defaults to the organization default region.",
+			},
+			"username":     sensitiveComputedDataSourceStringAttribute("Temporary registry username."),
+			"secret":       sensitiveComputedDataSourceStringAttribute("Temporary registry secret."),
+			"registry_url": computedDataSourceStringAttribute("Registry URL."),
+			"registry_id":  computedDataSourceStringAttribute("Registry ID."),
+			"project":      computedDataSourceStringAttribute("Registry project ID."),
+			"expires_at":   computedDataSourceStringAttribute("Credential expiration timestamp."),
+		},
+	}
+}
+
+func (d *DockerRegistryPushAccessDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	client := configureDataSourceClient(req.ProviderData, &resp.Diagnostics)
+	if client == nil {
+		return
+	}
+	d.client = client
+}
+
+func (d *DockerRegistryPushAccessDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data dockerRegistryPushAccessDataSourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	request := d.client.api.DockerRegistryAPI.GetTransientPushAccess(ctx)
+	if !data.OrganizationID.IsNull() {
+		request = request.XDaytonaOrganizationID(data.OrganizationID.ValueString())
+	}
+	if !data.RegionID.IsNull() {
+		request = request.RegionId(data.RegionID.ValueString())
+	}
+
+	access, httpResp, err := request.Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to read Daytona Docker registry push access", "read Docker registry push access", httpResp, err)
+		return
+	}
+
+	data.ID = types.StringValue(access.RegistryId + ":" + access.Project)
+	data.Username = types.StringValue(access.Username)
+	data.Secret = types.StringValue(access.Secret)
+	data.RegistryURL = types.StringValue(access.RegistryUrl)
+	data.RegistryID = types.StringValue(access.RegistryId)
+	data.Project = types.StringValue(access.Project)
+	data.ExpiresAt = types.StringValue(access.ExpiresAt)
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 type objectStoragePushAccessDataSourceModel struct {
