@@ -6,11 +6,14 @@ package provider
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
 
 	apiclient "github.com/daytonaio/daytona/libs/api-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -37,6 +40,7 @@ type runnerResourceModel struct {
 	Region        types.String `tfsdk:"region"`
 	State         types.String `tfsdk:"state"`
 	Unschedulable types.Bool   `tfsdk:"unschedulable"`
+	Draining      types.Bool   `tfsdk:"draining"`
 	CPU           types.String `tfsdk:"cpu"`
 	Memory        types.String `tfsdk:"memory"`
 	Disk          types.String `tfsdk:"disk"`
@@ -83,17 +87,29 @@ func (r *RunnerResource) Schema(ctx context.Context, req resource.SchemaRequest,
 					listplanmodifier.RequiresReplace(),
 				},
 			},
-			"api_key":       sensitiveComputedStringAttribute("Runner API key returned when the runner is created."),
-			"region":        computedStringAttribute("Runner region name."),
-			"state":         computedStringAttribute("Current runner state."),
-			"unschedulable": computedBoolAttribute("Whether the runner is unschedulable."),
-			"cpu":           computedStringAttribute("Runner CPU capacity."),
-			"memory":        computedStringAttribute("Runner memory capacity in GiB."),
-			"disk":          computedStringAttribute("Runner disk capacity in GiB."),
-			"gpu":           computedStringAttribute("Runner GPU capacity, when available."),
-			"gpu_type":      computedStringAttribute("Runner GPU type, when available."),
-			"created_at":    computedStringAttribute("Runner creation timestamp."),
-			"updated_at":    computedStringAttribute("Runner update timestamp."),
+			"api_key": sensitiveComputedStringAttribute("Runner API key returned when the runner is created."),
+			"region":  computedStringAttribute("Runner region name."),
+			"state":   computedStringAttribute("Current runner state."),
+			"unschedulable": schema.BoolAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Whether Daytona should stop scheduling new work on the runner.",
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"draining": schema.BoolAttribute{
+				Optional:            true,
+				WriteOnly:           true,
+				MarkdownDescription: "Sets Daytona draining mode for the runner. Daytona accepts this value through the API but does not return it in runner reads, so Terraform treats it as write-only.",
+			},
+			"cpu":        computedStringAttribute("Runner CPU capacity."),
+			"memory":     computedStringAttribute("Runner memory capacity in GiB."),
+			"disk":       computedStringAttribute("Runner disk capacity in GiB."),
+			"gpu":        computedStringAttribute("Runner GPU capacity, when available."),
+			"gpu_type":   computedStringAttribute("Runner GPU type, when available."),
+			"created_at": computedStringAttribute("Runner creation timestamp."),
+			"updated_at": computedStringAttribute("Runner update timestamp."),
 		},
 	}
 }
@@ -117,8 +133,10 @@ func (r *RunnerResource) Configure(ctx context.Context, req resource.ConfigureRe
 
 func (r *RunnerResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data runnerResourceModel
+	var config runnerResourceModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -145,6 +163,18 @@ func (r *RunnerResource) Create(ctx context.Context, req resource.CreateRequest,
 	data.APIKey = types.StringValue(created.ApiKey)
 
 	runner, httpResp, err := r.client.api.RunnersAPI.GetRunnerById(ctx, created.Id).Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to read created Daytona runner", "read runner", httpResp, err)
+		return
+	}
+
+	httpResp, err = r.applyRunnerOperationalSettings(ctx, created.Id, config, runner)
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to update Daytona runner operational settings", "update runner operational settings", httpResp, err)
+		return
+	}
+
+	runner, httpResp, err = r.client.api.RunnersAPI.GetRunnerById(ctx, created.Id).Execute()
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to read created Daytona runner", "read runner", httpResp, err)
 		return
@@ -177,10 +207,32 @@ func (r *RunnerResource) Read(ctx context.Context, req resource.ReadRequest, res
 }
 
 func (r *RunnerResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	resp.Diagnostics.AddError(
-		"Daytona runner cannot be updated",
-		"Daytona runner registration attributes are immutable through the API. Terraform should have planned replacement for configurable changes.",
-	)
+	var config runnerResourceModel
+	var plan runnerResourceModel
+	var state runnerResourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	httpResp, err := r.applyRunnerOperationalSettings(ctx, state.ID.ValueString(), config, nil)
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to update Daytona runner operational settings", "update runner operational settings", httpResp, err)
+		return
+	}
+
+	runner, httpResp, err := r.client.api.RunnersAPI.GetRunnerById(ctx, state.ID.ValueString()).Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to read Daytona runner", "read runner", httpResp, err)
+		return
+	}
+
+	plan = flattenRunner(ctx, runner, plan)
+	plan.APIKey = state.APIKey
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *RunnerResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -234,4 +286,59 @@ func flattenRunner(ctx context.Context, runner *apiclient.Runner, prior runnerRe
 	}
 
 	return prior
+}
+
+func (r *RunnerResource) applyRunnerOperationalSettings(ctx context.Context, runnerID string, config runnerResourceModel, current *apiclient.Runner) (*http.Response, error) {
+	var httpResp *http.Response
+
+	if configuredBool(config.Unschedulable) {
+		unschedulable := config.Unschedulable.ValueBool()
+		if current == nil || current.Unschedulable != unschedulable {
+			resp, err := r.updateRunnerScheduling(ctx, runnerID, unschedulable)
+			httpResp = resp
+			if err != nil {
+				return httpResp, err
+			}
+		}
+	}
+
+	if configuredBool(config.Draining) {
+		resp, err := r.updateRunnerDraining(ctx, runnerID, config.Draining.ValueBool())
+		httpResp = resp
+		if err != nil {
+			return httpResp, err
+		}
+	}
+
+	return httpResp, nil
+}
+
+func (r *RunnerResource) updateRunnerScheduling(ctx context.Context, runnerID string, unschedulable bool) (*http.Response, error) {
+	httpResp, err := r.client.patchJSON(
+		ctx,
+		fmt.Sprintf("/runners/%s/scheduling", url.PathEscape(runnerID)),
+		map[string]bool{"unschedulable": unschedulable},
+		nil,
+	)
+	if err != nil {
+		return httpResp, err
+	}
+	return httpResp, nil
+}
+
+func (r *RunnerResource) updateRunnerDraining(ctx context.Context, runnerID string, draining bool) (*http.Response, error) {
+	httpResp, err := r.client.patchJSON(
+		ctx,
+		fmt.Sprintf("/runners/%s/draining", url.PathEscape(runnerID)),
+		map[string]bool{"draining": draining},
+		nil,
+	)
+	if err != nil {
+		return httpResp, err
+	}
+	return httpResp, nil
+}
+
+func configuredBool(value types.Bool) bool {
+	return !value.IsNull() && !value.IsUnknown()
 }
