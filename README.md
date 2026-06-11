@@ -13,6 +13,7 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_organization_invitation`
   - `daytona_organization_member_access`
   - `daytona_organization_otel_config`
+  - `daytona_organization_region_quota`
   - `daytona_organization_role`
   - `daytona_region`
   - `daytona_runner`
