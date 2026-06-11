@@ -5,9 +5,11 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	apiclient "github.com/daytonaio/daytona/libs/api-client-go"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -49,6 +51,7 @@ type organizationResourceModel struct {
 	AuthenticatedRateLimitTTLSeconds    types.Float64 `tfsdk:"authenticated_rate_limit_ttl_seconds"`
 	SandboxCreateRateLimitTTLSeconds    types.Float64 `tfsdk:"sandbox_create_rate_limit_ttl_seconds"`
 	SandboxLifecycleRateLimitTTLSeconds types.Float64 `tfsdk:"sandbox_lifecycle_rate_limit_ttl_seconds"`
+	ExperimentalConfigJSON              types.String  `tfsdk:"experimental_config_json"`
 	CreatedAt                           types.String  `tfsdk:"created_at"`
 	UpdatedAt                           types.String  `tfsdk:"updated_at"`
 }
@@ -86,20 +89,45 @@ func (r *OrganizationResource) Schema(ctx context.Context, req resource.SchemaRe
 			"suspension_reason":                        computedStringAttribute("Organization suspension reason, when available."),
 			"suspended_until":                          computedStringAttribute("Suspension end timestamp, when available."),
 			"suspension_cleanup_grace_period_hours":    computedFloat64Attribute("Suspension cleanup grace period in hours."),
-			"max_cpu_per_sandbox":                      computedFloat64Attribute("Maximum CPU per sandbox."),
-			"max_memory_per_sandbox":                   computedFloat64Attribute("Maximum memory per sandbox."),
-			"max_disk_per_sandbox":                     computedFloat64Attribute("Maximum disk per sandbox."),
-			"snapshot_deactivation_timeout_minutes":    computedFloat64Attribute("Snapshot deactivation timeout in minutes."),
-			"sandbox_limited_network_egress":           computedBoolAttribute("Default limited network egress setting for new sandboxes."),
-			"authenticated_rate_limit":                 computedFloat64Attribute("Authenticated request rate limit per minute."),
-			"sandbox_create_rate_limit":                computedFloat64Attribute("Sandbox create rate limit per minute."),
-			"sandbox_lifecycle_rate_limit":             computedFloat64Attribute("Sandbox lifecycle rate limit per minute."),
-			"authenticated_rate_limit_ttl_seconds":     computedFloat64Attribute("Authenticated request rate-limit TTL in seconds."),
-			"sandbox_create_rate_limit_ttl_seconds":    computedFloat64Attribute("Sandbox create rate-limit TTL in seconds."),
-			"sandbox_lifecycle_rate_limit_ttl_seconds": computedFloat64Attribute("Sandbox lifecycle rate-limit TTL in seconds."),
+			"max_cpu_per_sandbox":                      optionalComputedFloat64Attribute("Maximum CPU per sandbox."),
+			"max_memory_per_sandbox":                   optionalComputedFloat64Attribute("Maximum memory per sandbox."),
+			"max_disk_per_sandbox":                     optionalComputedFloat64Attribute("Maximum disk per sandbox."),
+			"snapshot_deactivation_timeout_minutes":    optionalComputedFloat64Attribute("Snapshot deactivation timeout in minutes."),
+			"sandbox_limited_network_egress":           optionalComputedBoolAttribute("Default limited network egress setting for new sandboxes."),
+			"authenticated_rate_limit":                 optionalComputedFloat64Attribute("Authenticated request rate limit per minute."),
+			"sandbox_create_rate_limit":                optionalComputedFloat64Attribute("Sandbox create rate limit per minute."),
+			"sandbox_lifecycle_rate_limit":             optionalComputedFloat64Attribute("Sandbox lifecycle rate limit per minute."),
+			"authenticated_rate_limit_ttl_seconds":     optionalComputedFloat64Attribute("Authenticated request rate-limit TTL in seconds."),
+			"sandbox_create_rate_limit_ttl_seconds":    optionalComputedFloat64Attribute("Sandbox create rate-limit TTL in seconds."),
+			"sandbox_lifecycle_rate_limit_ttl_seconds": optionalComputedFloat64Attribute("Sandbox lifecycle rate-limit TTL in seconds."),
+			"experimental_config_json":                 optionalComputedStringAttribute("Experimental organization configuration as a JSON object string. Use `{}` to clear the configuration."),
 			"created_at":                               computedStringAttribute("Organization creation timestamp."),
 			"updated_at":                               computedStringAttribute("Organization update timestamp."),
 		},
+	}
+}
+
+func optionalComputedFloat64Attribute(description string) schema.Float64Attribute {
+	return schema.Float64Attribute{
+		Optional:            true,
+		Computed:            true,
+		MarkdownDescription: description,
+	}
+}
+
+func optionalComputedBoolAttribute(description string) schema.BoolAttribute {
+	return schema.BoolAttribute{
+		Optional:            true,
+		Computed:            true,
+		MarkdownDescription: description,
+	}
+}
+
+func optionalComputedStringAttribute(description string) schema.StringAttribute {
+	return schema.StringAttribute{
+		Optional:            true,
+		Computed:            true,
+		MarkdownDescription: description,
 	}
 }
 
@@ -149,8 +177,26 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 		addAPIError(&resp.Diagnostics, "Unable to create Daytona organization", "create organization", httpResp, err)
 		return
 	}
+	if created == nil {
+		resp.Diagnostics.AddError(
+			"Empty Daytona organization create response",
+			"Daytona returned a successful response without organization data.",
+		)
+		return
+	}
 
-	data = flattenOrganization(created, data)
+	organizationID := created.Id
+	if !r.applyMutableOrganizationSettings(ctx, organizationID, data, organizationResourceModel{}, true, &resp.Diagnostics) {
+		return
+	}
+
+	organization, httpResp, err := r.client.api.OrganizationsAPI.GetOrganization(ctx, organizationID).Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to read Daytona organization", "read organization", httpResp, err)
+		return
+	}
+
+	data = flattenOrganization(organization, data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -194,6 +240,10 @@ func (r *OrganizationResource) Update(ctx context.Context, req resource.UpdateRe
 			addAPIError(&resp.Diagnostics, "Unable to update Daytona organization default region", "update organization default region", httpResp, err)
 			return
 		}
+	}
+
+	if !r.applyMutableOrganizationSettings(ctx, state.ID.ValueString(), plan, state, false, &resp.Diagnostics) {
+		return
 	}
 
 	organization, httpResp, err := r.client.api.OrganizationsAPI.GetOrganization(ctx, state.ID.ValueString()).Execute()
@@ -253,6 +303,7 @@ func flattenOrganization(organization *apiclient.Organization, prior organizatio
 	prior.AuthenticatedRateLimitTTLSeconds = nullableFloat32(organization.AuthenticatedRateLimitTtlSeconds)
 	prior.SandboxCreateRateLimitTTLSeconds = nullableFloat32(organization.SandboxCreateRateLimitTtlSeconds)
 	prior.SandboxLifecycleRateLimitTTLSeconds = nullableFloat32(organization.SandboxLifecycleRateLimitTtlSeconds)
+	prior.ExperimentalConfigJSON = jsonStringValue(organization.ExperimentalConfig)
 	prior.CreatedAt = terraformTimeString(organization.CreatedAt)
 	prior.UpdatedAt = terraformTimeString(organization.UpdatedAt)
 
@@ -263,6 +314,137 @@ func flattenOrganization(organization *apiclient.Organization, prior organizatio
 	}
 
 	return prior
+}
+
+func (r *OrganizationResource) applyMutableOrganizationSettings(ctx context.Context, organizationID string, plan, state organizationResourceModel, create bool, diags *diag.Diagnostics) bool {
+	if (create && organizationQuotaConfigured(plan)) || (!create && organizationQuotaChanged(plan, state)) {
+		httpResp, err := r.client.api.OrganizationsAPI.UpdateOrganizationQuota(ctx, organizationID).
+			UpdateOrganizationQuota(updateOrganizationQuotaFromPlan(plan)).
+			Execute()
+		if err != nil {
+			addAPIError(diags, "Unable to update Daytona organization quota", "update organization quota", httpResp, err)
+			return false
+		}
+	}
+
+	if (create && terraformBoolConfigured(plan.SandboxLimitedNetworkEgress)) || (!create && !plan.SandboxLimitedNetworkEgress.Equal(state.SandboxLimitedNetworkEgress)) {
+		if terraformBoolConfigured(plan.SandboxLimitedNetworkEgress) {
+			httpResp, err := r.client.api.OrganizationsAPI.UpdateSandboxDefaultLimitedNetworkEgress(ctx, organizationID).
+				OrganizationSandboxDefaultLimitedNetworkEgress(*apiclient.NewOrganizationSandboxDefaultLimitedNetworkEgress(plan.SandboxLimitedNetworkEgress.ValueBool())).
+				Execute()
+			if err != nil {
+				addAPIError(diags, "Unable to update Daytona organization sandbox default limited network egress", "update sandbox default limited network egress", httpResp, err)
+				return false
+			}
+		}
+	}
+
+	if (create && terraformStringConfigured(plan.ExperimentalConfigJSON)) || (!create && !plan.ExperimentalConfigJSON.Equal(state.ExperimentalConfigJSON)) {
+		if terraformStringConfigured(plan.ExperimentalConfigJSON) {
+			payload, ok := experimentalConfigPayload(plan.ExperimentalConfigJSON, diags)
+			if !ok {
+				return false
+			}
+
+			httpResp, err := r.client.api.OrganizationsAPI.UpdateExperimentalConfig(ctx, organizationID).
+				RequestBody(payload).
+				Execute()
+			if err != nil {
+				addAPIError(diags, "Unable to update Daytona organization experimental configuration", "update organization experimental configuration", httpResp, err)
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func updateOrganizationQuotaFromPlan(plan organizationResourceModel) apiclient.UpdateOrganizationQuota {
+	return apiclient.UpdateOrganizationQuota{
+		MaxCpuPerSandbox:                    nullableFloat32FromFloat64(plan.MaxCPUPerSandbox),
+		MaxMemoryPerSandbox:                 nullableFloat32FromFloat64(plan.MaxMemoryPerSandbox),
+		MaxDiskPerSandbox:                   nullableFloat32FromFloat64(plan.MaxDiskPerSandbox),
+		AuthenticatedRateLimit:              nullableFloat32FromFloat64(plan.AuthenticatedRateLimit),
+		SandboxCreateRateLimit:              nullableFloat32FromFloat64(plan.SandboxCreateRateLimit),
+		SandboxLifecycleRateLimit:           nullableFloat32FromFloat64(plan.SandboxLifecycleRateLimit),
+		AuthenticatedRateLimitTtlSeconds:    nullableFloat32FromFloat64(plan.AuthenticatedRateLimitTTLSeconds),
+		SandboxCreateRateLimitTtlSeconds:    nullableFloat32FromFloat64(plan.SandboxCreateRateLimitTTLSeconds),
+		SandboxLifecycleRateLimitTtlSeconds: nullableFloat32FromFloat64(plan.SandboxLifecycleRateLimitTTLSeconds),
+		SnapshotDeactivationTimeoutMinutes:  nullableFloat32FromFloat64(plan.SnapshotDeactivationTimeoutMinutes),
+	}
+}
+
+func organizationQuotaConfigured(data organizationResourceModel) bool {
+	return terraformFloat64Configured(data.MaxCPUPerSandbox) ||
+		terraformFloat64Configured(data.MaxMemoryPerSandbox) ||
+		terraformFloat64Configured(data.MaxDiskPerSandbox) ||
+		terraformFloat64Configured(data.AuthenticatedRateLimit) ||
+		terraformFloat64Configured(data.SandboxCreateRateLimit) ||
+		terraformFloat64Configured(data.SandboxLifecycleRateLimit) ||
+		terraformFloat64Configured(data.AuthenticatedRateLimitTTLSeconds) ||
+		terraformFloat64Configured(data.SandboxCreateRateLimitTTLSeconds) ||
+		terraformFloat64Configured(data.SandboxLifecycleRateLimitTTLSeconds) ||
+		terraformFloat64Configured(data.SnapshotDeactivationTimeoutMinutes)
+}
+
+func organizationQuotaChanged(plan, state organizationResourceModel) bool {
+	return !plan.MaxCPUPerSandbox.Equal(state.MaxCPUPerSandbox) ||
+		!plan.MaxMemoryPerSandbox.Equal(state.MaxMemoryPerSandbox) ||
+		!plan.MaxDiskPerSandbox.Equal(state.MaxDiskPerSandbox) ||
+		!plan.AuthenticatedRateLimit.Equal(state.AuthenticatedRateLimit) ||
+		!plan.SandboxCreateRateLimit.Equal(state.SandboxCreateRateLimit) ||
+		!plan.SandboxLifecycleRateLimit.Equal(state.SandboxLifecycleRateLimit) ||
+		!plan.AuthenticatedRateLimitTTLSeconds.Equal(state.AuthenticatedRateLimitTTLSeconds) ||
+		!plan.SandboxCreateRateLimitTTLSeconds.Equal(state.SandboxCreateRateLimitTTLSeconds) ||
+		!plan.SandboxLifecycleRateLimitTTLSeconds.Equal(state.SandboxLifecycleRateLimitTTLSeconds) ||
+		!plan.SnapshotDeactivationTimeoutMinutes.Equal(state.SnapshotDeactivationTimeoutMinutes)
+}
+
+func nullableFloat32FromFloat64(value types.Float64) apiclient.NullableFloat32 {
+	var result apiclient.NullableFloat32
+	if value.IsNull() || value.IsUnknown() {
+		return result
+	}
+
+	v := float32(value.ValueFloat64())
+	result.Set(&v)
+	return result
+}
+
+func experimentalConfigPayload(value types.String, diags *diag.Diagnostics) (map[string]interface{}, bool) {
+	var payload map[string]interface{}
+
+	err := json.Unmarshal([]byte(value.ValueString()), &payload)
+	if err != nil {
+		diags.AddAttributeError(
+			path.Root("experimental_config_json"),
+			"Invalid experimental_config_json",
+			fmt.Sprintf("The value must be a JSON object string: %s", err),
+		)
+		return nil, false
+	}
+	if payload == nil {
+		diags.AddAttributeError(
+			path.Root("experimental_config_json"),
+			"Invalid experimental_config_json",
+			"The value must be a JSON object string, not null.",
+		)
+		return nil, false
+	}
+
+	return payload, true
+}
+
+func terraformFloat64Configured(value types.Float64) bool {
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+func terraformBoolConfigured(value types.Bool) bool {
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+func terraformStringConfigured(value types.String) bool {
+	return !value.IsNull() && !value.IsUnknown()
 }
 
 func nullablePlainString(value string) types.String {

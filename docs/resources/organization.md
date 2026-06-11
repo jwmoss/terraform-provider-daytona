@@ -27,23 +27,27 @@ resource "daytona_organization" "example" {
 - `default_region_id` (String) Default Daytona region ID for the organization.
 - `name` (String) Organization name.
 
-### Read-Only
+### Optional
 
 - `authenticated_rate_limit` (Number) Authenticated request rate limit per minute.
 - `authenticated_rate_limit_ttl_seconds` (Number) Authenticated request rate-limit TTL in seconds.
-- `created_at` (String) Organization creation timestamp.
-- `created_by` (String) User ID of the organization creator.
-- `id` (String) Daytona organization ID.
+- `experimental_config_json` (String) Experimental organization configuration as a JSON object string. Use `{}` to clear the configuration.
 - `max_cpu_per_sandbox` (Number) Maximum CPU per sandbox.
 - `max_disk_per_sandbox` (Number) Maximum disk per sandbox.
 - `max_memory_per_sandbox` (Number) Maximum memory per sandbox.
-- `personal` (Boolean) Whether this is a personal organization.
 - `sandbox_create_rate_limit` (Number) Sandbox create rate limit per minute.
 - `sandbox_create_rate_limit_ttl_seconds` (Number) Sandbox create rate-limit TTL in seconds.
 - `sandbox_lifecycle_rate_limit` (Number) Sandbox lifecycle rate limit per minute.
 - `sandbox_lifecycle_rate_limit_ttl_seconds` (Number) Sandbox lifecycle rate-limit TTL in seconds.
 - `sandbox_limited_network_egress` (Boolean) Default limited network egress setting for new sandboxes.
 - `snapshot_deactivation_timeout_minutes` (Number) Snapshot deactivation timeout in minutes.
+
+### Read-Only
+
+- `created_at` (String) Organization creation timestamp.
+- `created_by` (String) User ID of the organization creator.
+- `id` (String) Daytona organization ID.
+- `personal` (Boolean) Whether this is a personal organization.
 - `suspended` (Boolean) Whether the organization is suspended.
 - `suspended_at` (String) Organization suspension timestamp, when available.
 - `suspended_until` (String) Suspension end timestamp, when available.
