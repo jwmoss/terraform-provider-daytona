@@ -49,6 +49,7 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_update_sandbox_last_activity`
 - Data sources:
   - `daytona_account_providers`
+  - `daytona_admin_audit_logs`
   - `daytona_admin_snapshot_image_cleanup_status`
   - `daytona_api_key`
   - `daytona_api_keys`
