@@ -123,7 +123,9 @@ func (p *DaytonaProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 func (p *DaytonaProvider) Actions(ctx context.Context) []func() action.Action {
 	return []func() action.Action{
+		NewAdminCreateUserAction,
 		NewAdminInitializeWebhooksAction,
+		NewAdminRegenerateUserKeyPairAction,
 		NewAdminSendWebhookAction,
 		NewAdminSetDefaultDockerRegistryAction,
 		NewAdminSetSnapshotGeneralStatusAction,
@@ -177,6 +179,8 @@ func (p *DaytonaProvider) DataSources(ctx context.Context) []func() datasource.D
 		NewAccountProvidersDataSource,
 		NewAdminAuditLogsDataSource,
 		NewAdminSnapshotImageCleanupStatusDataSource,
+		NewAdminUserDataSource,
+		NewAdminUsersDataSource,
 		NewAdminWebhookMessageAttemptsDataSource,
 		NewAdminWebhookStatusDataSource,
 		NewAPIKeyDataSource,
