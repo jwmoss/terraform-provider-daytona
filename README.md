@@ -1,64 +1,101 @@
-# Terraform Provider Scaffolding (Terraform Plugin Framework)
+# Terraform Provider for Daytona
 
-_This template repository is built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework). The template repository built on the [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) can be found at [terraform-provider-scaffolding](https://github.com/hashicorp/terraform-provider-scaffolding). See [Which SDK Should I Use?](https://developer.hashicorp.com/terraform/plugin/framework-benefits) in the Terraform documentation for additional information._
+This repository contains a Terraform Plugin Framework provider for [Daytona](https://github.com/daytonaio/daytona). It lets teams manage Daytona sandboxes and supporting Daytona infrastructure with the same Terraform workflows they use for AWS, Azure, GCP, and other enterprise platform dependencies.
 
-This repository is a *template* for a [Terraform](https://www.terraform.io) provider. It is intended as a starting point for creating Terraform providers, containing:
+## Features
 
-- A resource and a data source (`internal/provider/`),
-- Examples (`examples/`) and generated documentation (`docs/`),
-- Miscellaneous meta files.
+- Provider configuration through `DAYTONA_API_KEY`, `DAYTONA_API_URL`, and `DAYTONA_ORGANIZATION_ID`
+- Daytona managed-service default API URL: `https://app.daytona.io/api`
+- Resources:
+  - `daytona_api_key`
+  - `daytona_docker_registry`
+  - `daytona_region`
+  - `daytona_runner`
+  - `daytona_sandbox`
+  - `daytona_snapshot`
+  - `daytona_volume`
+- Data sources:
+  - `daytona_current_api_key`
+  - `daytona_docker_registries`
+  - `daytona_regions`
+  - `daytona_runners`
+  - `daytona_sandboxes`
+  - `daytona_snapshots`
+  - `daytona_volumes`
 
-These files contain boilerplate code that you will need to edit to create your own Terraform provider. Tutorials for creating Terraform providers can be found on the [HashiCorp Developer](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework) platform. _Terraform Plugin Framework specific guides are titled accordingly._
+The provider is backed by Daytona's generated Go OpenAPI client: `github.com/daytonaio/daytona/libs/api-client-go`.
 
-Please see the [GitHub template repository documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for how to create a new repository from this template on GitHub.
+## Example
 
-Once you've written your provider, you'll want to [publish it on the Terraform Registry](https://developer.hashicorp.com/terraform/registry/providers/publishing) so that others can use it.
+```terraform
+terraform {
+  required_providers {
+    daytona = {
+      source = "jwmoss/daytona"
+    }
+  }
+}
 
-## Requirements
+provider "daytona" {}
 
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
-- [Go](https://golang.org/doc/install) >= 1.24
+resource "daytona_volume" "workspace" {
+  name = "workspace-cache"
+}
 
-## Building the Provider
+resource "daytona_sandbox" "agent" {
+  name          = "agent-runtime"
+  snapshot      = "daytonaio/sandbox:0.6.0"
+  desired_state = "started"
 
-1. Clone the repository
-1. Enter the repository directory
-1. Build the provider using the Go `install` command:
+  labels = {
+    managed-by = "terraform"
+  }
+}
 
-```shell
-go install
+data "daytona_current_api_key" "current" {}
 ```
 
-## Adding Dependencies
-
-This provider uses [Go modules](https://github.com/golang/go/wiki/Modules).
-Please see the Go documentation for the most up to date information about using Go modules.
-
-To add a new dependency `github.com/author/dependency` to your Terraform provider:
+Set credentials with environment variables:
 
 ```shell
-go get github.com/author/dependency
-go mod tidy
+export DAYTONA_API_KEY="dtn_..."
+export DAYTONA_API_URL="https://app.daytona.io/api"
 ```
 
-Then commit the changes to `go.mod` and `go.sum`.
+## Development
 
-## Using the Provider
+Requirements:
 
-Fill this in for each provider
+- Go 1.25 or newer
+- Terraform 1.0 or newer
 
-## Developing the Provider
-
-If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
-
-To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
-
-To generate or update documentation, run `make generate`.
-
-In order to run the full suite of Acceptance tests, run `make testacc`.
-
-*Note:* Acceptance tests create real resources, and often cost money to run.
+Run the local test suite:
 
 ```shell
-make testacc
+go test ./...
 ```
+
+Run read-only live acceptance tests:
+
+```shell
+TF_ACC=1 DAYTONA_API_KEY="dtn_..." \
+  go test ./internal/provider -run 'TestAcc(CurrentAPIKeyDataSource_basic|CollectionDataSources_basic)' -v
+```
+
+Run the full acceptance suite:
+
+```shell
+TF_ACC=1 DAYTONA_API_KEY="dtn_..." go test ./internal/provider -v
+```
+
+Acceptance tests create real Daytona resources. The current live test key can read Daytona metadata, but create/delete resource tests are blocked until the Daytona organization has a payment method; the API currently returns `Organization is suspended: Payment method required` for volume creation.
+
+Generate provider documentation:
+
+```shell
+make generate
+```
+
+## Repository Status
+
+This provider was scaffolded from `hashicorp/terraform-provider-scaffolding-framework` and then converted to a Daytona-specific provider module at `github.com/jwmoss/terraform-provider-daytona`.
