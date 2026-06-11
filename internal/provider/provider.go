@@ -182,6 +182,7 @@ func (p *DaytonaProvider) DataSources(ctx context.Context) []func() datasource.D
 		NewOrganizationMemberDataSource,
 		NewOrganizationMembersDataSource,
 		NewOrganizationOtelConfigDataSource,
+		NewOrganizationOtelConfigBySandboxAuthTokenDataSource,
 		NewOrganizationRoleDataSource,
 		NewOrganizationRolesDataSource,
 		NewOrganizationUsageDataSource,
