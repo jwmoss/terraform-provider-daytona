@@ -120,12 +120,20 @@ func (p *DaytonaProvider) Resources(ctx context.Context) []func() resource.Resou
 
 func (p *DaytonaProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		NewAccountProvidersDataSource,
 		NewAPIKeysDataSource,
+		NewConfigDataSource,
 		NewCurrentAPIKeyDataSource,
+		NewCurrentUserDataSource,
 		NewDockerRegistriesDataSource,
+		NewJobDataSource,
+		NewJobsDataSource,
+		NewObjectStoragePushAccessDataSource,
+		NewOrganizationAuditLogsDataSource,
 		NewOrganizationInvitationsDataSource,
 		NewOrganizationMembersDataSource,
 		NewOrganizationRolesDataSource,
+		NewOrganizationUsageDataSource,
 		NewOrganizationsDataSource,
 		NewRegionsDataSource,
 		NewRunnersDataSource,
