@@ -95,9 +95,6 @@ func (r *SandboxResource) Schema(ctx context.Context, req resource.SchemaRequest
 				ElementType:         types.StringType,
 				Optional:            true,
 				MarkdownDescription: "Labels for the sandbox.",
-				PlanModifiers: []planmodifier.Map{
-					mapplanmodifier.RequiresReplace(),
-				},
 			},
 			"public": schema.BoolAttribute{
 				Optional:            true,
@@ -116,13 +113,13 @@ func (r *SandboxResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "Comma-separated list of allowed CIDR network addresses.",
 			},
 			"target":                replaceStringAttribute("Target region where the sandbox is created."),
-			"cpu":                   replaceInt64Attribute("CPU cores allocated to the sandbox."),
+			"cpu":                   optionalInt64Attribute("CPU cores allocated to the sandbox."),
 			"gpu":                   replaceInt64Attribute("GPU units allocated to the sandbox."),
-			"memory":                replaceInt64Attribute("Memory allocated to the sandbox in GB."),
-			"disk":                  replaceInt64Attribute("Disk allocated to the sandbox in GB."),
-			"auto_stop_interval":    replaceInt64Attribute("Auto-stop interval in minutes. Use 0 to disable."),
-			"auto_archive_interval": replaceInt64Attribute("Auto-archive interval in minutes."),
-			"auto_delete_interval":  replaceInt64Attribute("Auto-delete interval in minutes. Negative values disable auto-delete."),
+			"memory":                optionalInt64Attribute("Memory allocated to the sandbox in GB."),
+			"disk":                  optionalInt64Attribute("Disk allocated to the sandbox in GB."),
+			"auto_stop_interval":    optionalInt64Attribute("Auto-stop interval in minutes. Use 0 to disable."),
+			"auto_archive_interval": optionalInt64Attribute("Auto-archive interval in minutes."),
+			"auto_delete_interval":  optionalInt64Attribute("Auto-delete interval in minutes. Negative values disable auto-delete."),
 			"linked_sandbox":        replaceStringAttribute("Existing sandbox ID or name to link the new sandbox to."),
 			"desired_state": schema.StringAttribute{
 				Optional:            true,
@@ -173,6 +170,13 @@ func replaceInt64Attribute(description string) schema.Int64Attribute {
 		PlanModifiers: []planmodifier.Int64{
 			int64planmodifier.RequiresReplace(),
 		},
+	}
+}
+
+func optionalInt64Attribute(description string) schema.Int64Attribute {
+	return schema.Int64Attribute{
+		Optional:            true,
+		MarkdownDescription: description,
 	}
 }
 
@@ -261,13 +265,10 @@ func (r *SandboxResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	var sandbox *apiclient.Sandbox
-	var httpRespErr error
-	var httpResp any
+	needsRead := false
 
 	if !plan.Public.Equal(state.Public) {
 		sandbox, response, err := r.client.api.SandboxAPI.UpdatePublicStatus(ctx, state.ID.ValueString(), plan.Public.ValueBool()).Execute()
-		httpResp = response
-		httpRespErr = err
 		if err != nil {
 			addAPIError(&resp.Diagnostics, "Unable to update Daytona sandbox public status", "update sandbox public status", response, err)
 			return
@@ -287,8 +288,6 @@ func (r *SandboxResource) Update(ctx context.Context, req resource.UpdateRequest
 		sandbox, response, err := r.client.api.SandboxAPI.UpdateNetworkSettings(ctx, state.ID.ValueString()).
 			UpdateSandboxNetworkSettings(*updateNetworkSettings).
 			Execute()
-		httpResp = response
-		httpRespErr = err
 		if err != nil {
 			addAPIError(&resp.Diagnostics, "Unable to update Daytona sandbox network settings", "update sandbox network settings", response, err)
 			return
@@ -296,10 +295,95 @@ func (r *SandboxResource) Update(ctx context.Context, req resource.UpdateRequest
 		plan = flattenSandbox(ctx, sandbox, plan)
 	}
 
+	if !plan.Labels.Equal(state.Labels) {
+		labels, diags := stringMap(ctx, plan.Labels)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		sandboxLabels := apiclient.NewSandboxLabels(labels)
+		labelResponse, response, err := r.client.api.SandboxAPI.ReplaceLabels(ctx, state.ID.ValueString()).
+			SandboxLabels(*sandboxLabels).
+			Execute()
+		if err != nil {
+			addAPIError(&resp.Diagnostics, "Unable to replace Daytona sandbox labels", "replace sandbox labels", response, err)
+			return
+		}
+		if labelResponse != nil {
+			plan.Labels = stringMapValue(ctx, labelResponse.Labels)
+		}
+		needsRead = true
+	}
+
+	if !plan.CPU.Equal(state.CPU) || !plan.Memory.Equal(state.Memory) || !plan.Disk.Equal(state.Disk) {
+		resizeSandbox := apiclient.NewResizeSandbox()
+		hasResize := false
+		if !plan.CPU.Equal(state.CPU) {
+			if value := optionalInt32(plan.CPU); value != nil {
+				resizeSandbox.SetCpu(*value)
+				hasResize = true
+			}
+		}
+		if !plan.Memory.Equal(state.Memory) {
+			if value := optionalInt32(plan.Memory); value != nil {
+				resizeSandbox.SetMemory(*value)
+				hasResize = true
+			}
+		}
+		if !plan.Disk.Equal(state.Disk) {
+			if value := optionalInt32(plan.Disk); value != nil {
+				resizeSandbox.SetDisk(*value)
+				hasResize = true
+			}
+		}
+		if hasResize {
+			sandbox, response, err := r.client.api.SandboxAPI.ResizeSandbox(ctx, state.ID.ValueString()).
+				ResizeSandbox(*resizeSandbox).
+				Execute()
+			if err != nil {
+				addAPIError(&resp.Diagnostics, "Unable to resize Daytona sandbox", "resize sandbox", response, err)
+				return
+			}
+			plan = flattenSandbox(ctx, sandbox, plan)
+		}
+	}
+
+	if !plan.AutoStopInterval.Equal(state.AutoStopInterval) {
+		if value := optionalInt32(plan.AutoStopInterval); value != nil {
+			sandbox, response, err := r.client.api.SandboxAPI.SetAutostopInterval(ctx, state.ID.ValueString(), float32(*value)).Execute()
+			if err != nil {
+				addAPIError(&resp.Diagnostics, "Unable to update Daytona sandbox auto-stop interval", "set sandbox auto-stop interval", response, err)
+				return
+			}
+			plan = flattenSandbox(ctx, sandbox, plan)
+		}
+	}
+
+	if !plan.AutoArchiveInterval.Equal(state.AutoArchiveInterval) {
+		if value := optionalInt32(plan.AutoArchiveInterval); value != nil {
+			sandbox, response, err := r.client.api.SandboxAPI.SetAutoArchiveInterval(ctx, state.ID.ValueString(), float32(*value)).Execute()
+			if err != nil {
+				addAPIError(&resp.Diagnostics, "Unable to update Daytona sandbox auto-archive interval", "set sandbox auto-archive interval", response, err)
+				return
+			}
+			plan = flattenSandbox(ctx, sandbox, plan)
+		}
+	}
+
+	if !plan.AutoDeleteInterval.Equal(state.AutoDeleteInterval) {
+		if value := optionalInt32(plan.AutoDeleteInterval); value != nil {
+			sandbox, response, err := r.client.api.SandboxAPI.SetAutoDeleteInterval(ctx, state.ID.ValueString(), float32(*value)).Execute()
+			if err != nil {
+				addAPIError(&resp.Diagnostics, "Unable to update Daytona sandbox auto-delete interval", "set sandbox auto-delete interval", response, err)
+				return
+			}
+			plan = flattenSandbox(ctx, sandbox, plan)
+		}
+	}
+
 	if !plan.DesiredState.Equal(state.DesiredState) && !plan.DesiredState.IsNull() && plan.DesiredState.ValueString() != "" {
 		sandbox, response, err := r.applyDesiredState(ctx, state.ID.ValueString(), plan.DesiredState.ValueString())
-		httpResp = response
-		httpRespErr = err
 		if err != nil {
 			addAPIError(&resp.Diagnostics, "Unable to set Daytona sandbox state", "set sandbox state", response, err)
 			return
@@ -307,7 +391,7 @@ func (r *SandboxResource) Update(ctx context.Context, req resource.UpdateRequest
 		plan = flattenSandbox(ctx, sandbox, plan)
 	}
 
-	if sandbox == nil && httpResp == nil && httpRespErr == nil {
+	if sandbox == nil || needsRead {
 		current, response, err := r.client.api.SandboxAPI.GetSandbox(ctx, state.ID.ValueString()).Execute()
 		if err != nil {
 			addAPIError(&resp.Diagnostics, "Unable to read Daytona sandbox", "read sandbox", response, err)
