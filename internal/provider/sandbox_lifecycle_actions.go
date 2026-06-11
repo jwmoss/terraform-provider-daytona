@@ -25,6 +25,12 @@ var _ action.Action = &SandboxForkAction{}
 var _ action.ActionWithConfigure = &SandboxForkAction{}
 var _ action.Action = &SandboxUpdateLastActivityAction{}
 var _ action.ActionWithConfigure = &SandboxUpdateLastActivityAction{}
+var _ action.Action = &SandboxStartAction{}
+var _ action.ActionWithConfigure = &SandboxStartAction{}
+var _ action.Action = &SandboxStopAction{}
+var _ action.ActionWithConfigure = &SandboxStopAction{}
+var _ action.Action = &SandboxArchiveAction{}
+var _ action.ActionWithConfigure = &SandboxArchiveAction{}
 
 func NewSandboxRecoverAction() action.Action {
 	return &SandboxRecoverAction{}
@@ -44,6 +50,18 @@ func NewSandboxForkAction() action.Action {
 
 func NewSandboxUpdateLastActivityAction() action.Action {
 	return &SandboxUpdateLastActivityAction{}
+}
+
+func NewSandboxStartAction() action.Action {
+	return &SandboxStartAction{}
+}
+
+func NewSandboxStopAction() action.Action {
+	return &SandboxStopAction{}
+}
+
+func NewSandboxArchiveAction() action.Action {
+	return &SandboxArchiveAction{}
 }
 
 type SandboxRecoverAction struct {
@@ -397,6 +415,200 @@ func (a *SandboxUpdateLastActivityAction) Invoke(ctx context.Context, req action
 	httpResp, err := request.Execute()
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to update Daytona sandbox last activity", "update sandbox last activity", httpResp, err)
+	}
+}
+
+type SandboxStartAction struct {
+	client *daytonaClient
+}
+
+type sandboxStartActionModel struct {
+	SandboxIDOrName types.String `tfsdk:"sandbox_id_or_name"`
+	OrganizationID  types.String `tfsdk:"organization_id"`
+}
+
+func (a *SandboxStartAction) Metadata(ctx context.Context, req action.MetadataRequest, resp *action.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_start_sandbox"
+}
+
+func (a *SandboxStartAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
+	resp.Schema = actionschema.Schema{
+		MarkdownDescription: "Starts a Daytona sandbox, or restores it from archived state.",
+		Attributes: map[string]actionschema.Attribute{
+			"sandbox_id_or_name": sandboxIDOrNameActionAttribute(),
+			"organization_id":    organizationIDActionAttribute(),
+		},
+	}
+}
+
+func (a *SandboxStartAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
+	a.client = configureActionDaytonaClient(req.ProviderData, &resp.Diagnostics)
+}
+
+func (a *SandboxStartAction) Invoke(ctx context.Context, req action.InvokeRequest, resp *action.InvokeResponse) {
+	var data sandboxStartActionModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	sandboxIDOrName := strings.TrimSpace(data.SandboxIDOrName.ValueString())
+	if sandboxIDOrName == "" {
+		resp.Diagnostics.AddError(
+			"Missing Daytona sandbox ID or name",
+			"Configure the sandbox_id_or_name attribute with the Daytona sandbox ID or name to start.",
+		)
+		return
+	}
+	if !ensureActionClient(a.client, &resp.Diagnostics) {
+		return
+	}
+
+	request := a.client.api.SandboxAPI.StartSandbox(ctx, sandboxIDOrName)
+	if organizationID := optionalString(data.OrganizationID); organizationID != nil {
+		request = request.XDaytonaOrganizationID(*organizationID)
+	}
+
+	if resp.SendProgress != nil {
+		resp.SendProgress(action.InvokeProgressEvent{Message: "Starting Daytona sandbox."})
+	}
+
+	_, httpResp, err := request.Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to start Daytona sandbox", "start sandbox", httpResp, err)
+	}
+}
+
+type SandboxStopAction struct {
+	client *daytonaClient
+}
+
+type sandboxStopActionModel struct {
+	SandboxIDOrName types.String `tfsdk:"sandbox_id_or_name"`
+	Force           types.Bool   `tfsdk:"force"`
+	OrganizationID  types.String `tfsdk:"organization_id"`
+}
+
+func (a *SandboxStopAction) Metadata(ctx context.Context, req action.MetadataRequest, resp *action.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_stop_sandbox"
+}
+
+func (a *SandboxStopAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
+	resp.Schema = actionschema.Schema{
+		MarkdownDescription: "Stops a Daytona sandbox.",
+		Attributes: map[string]actionschema.Attribute{
+			"sandbox_id_or_name": sandboxIDOrNameActionAttribute(),
+			"force": actionschema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Whether to force stop the sandbox with SIGKILL instead of SIGTERM.",
+			},
+			"organization_id": organizationIDActionAttribute(),
+		},
+	}
+}
+
+func (a *SandboxStopAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
+	a.client = configureActionDaytonaClient(req.ProviderData, &resp.Diagnostics)
+}
+
+func (a *SandboxStopAction) Invoke(ctx context.Context, req action.InvokeRequest, resp *action.InvokeResponse) {
+	var data sandboxStopActionModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	sandboxIDOrName := strings.TrimSpace(data.SandboxIDOrName.ValueString())
+	if sandboxIDOrName == "" {
+		resp.Diagnostics.AddError(
+			"Missing Daytona sandbox ID or name",
+			"Configure the sandbox_id_or_name attribute with the Daytona sandbox ID or name to stop.",
+		)
+		return
+	}
+	if !ensureActionClient(a.client, &resp.Diagnostics) {
+		return
+	}
+
+	request := a.client.api.SandboxAPI.StopSandbox(ctx, sandboxIDOrName)
+	if force := optionalBool(data.Force); force != nil {
+		request = request.Force(*force)
+	}
+	if organizationID := optionalString(data.OrganizationID); organizationID != nil {
+		request = request.XDaytonaOrganizationID(*organizationID)
+	}
+
+	if resp.SendProgress != nil {
+		resp.SendProgress(action.InvokeProgressEvent{Message: "Stopping Daytona sandbox."})
+	}
+
+	_, httpResp, err := request.Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to stop Daytona sandbox", "stop sandbox", httpResp, err)
+	}
+}
+
+type SandboxArchiveAction struct {
+	client *daytonaClient
+}
+
+type sandboxArchiveActionModel struct {
+	SandboxIDOrName types.String `tfsdk:"sandbox_id_or_name"`
+	OrganizationID  types.String `tfsdk:"organization_id"`
+}
+
+func (a *SandboxArchiveAction) Metadata(ctx context.Context, req action.MetadataRequest, resp *action.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_archive_sandbox"
+}
+
+func (a *SandboxArchiveAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
+	resp.Schema = actionschema.Schema{
+		MarkdownDescription: "Archives a Daytona sandbox.",
+		Attributes: map[string]actionschema.Attribute{
+			"sandbox_id_or_name": sandboxIDOrNameActionAttribute(),
+			"organization_id":    organizationIDActionAttribute(),
+		},
+	}
+}
+
+func (a *SandboxArchiveAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
+	a.client = configureActionDaytonaClient(req.ProviderData, &resp.Diagnostics)
+}
+
+func (a *SandboxArchiveAction) Invoke(ctx context.Context, req action.InvokeRequest, resp *action.InvokeResponse) {
+	var data sandboxArchiveActionModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	sandboxIDOrName := strings.TrimSpace(data.SandboxIDOrName.ValueString())
+	if sandboxIDOrName == "" {
+		resp.Diagnostics.AddError(
+			"Missing Daytona sandbox ID or name",
+			"Configure the sandbox_id_or_name attribute with the Daytona sandbox ID or name to archive.",
+		)
+		return
+	}
+	if !ensureActionClient(a.client, &resp.Diagnostics) {
+		return
+	}
+
+	request := a.client.api.SandboxAPI.ArchiveSandbox(ctx, sandboxIDOrName)
+	if organizationID := optionalString(data.OrganizationID); organizationID != nil {
+		request = request.XDaytonaOrganizationID(*organizationID)
+	}
+
+	if resp.SendProgress != nil {
+		resp.SendProgress(action.InvokeProgressEvent{Message: "Archiving Daytona sandbox."})
+	}
+
+	_, httpResp, err := request.Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to archive Daytona sandbox", "archive sandbox", httpResp, err)
 	}
 }
 

@@ -22,6 +22,7 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
 - Actions:
   - `daytona_accept_organization_invitation`
   - `daytona_activate_snapshot`
+  - `daytona_archive_sandbox`
   - `daytona_create_sandbox_backup`
   - `daytona_create_sandbox_snapshot`
   - `daytona_deactivate_snapshot`
@@ -36,6 +37,8 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_refresh_webhook_endpoints`
   - `daytona_revoke_api_key_for_user`
   - `daytona_revoke_sandbox_ssh_access`
+  - `daytona_start_sandbox`
+  - `daytona_stop_sandbox`
   - `daytona_suspend_organization`
   - `daytona_unlink_account`
   - `daytona_unsuspend_organization`
