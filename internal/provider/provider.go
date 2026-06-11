@@ -123,8 +123,13 @@ func (p *DaytonaProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 func (p *DaytonaProvider) Actions(ctx context.Context) []func() action.Action {
 	return []func() action.Action{
+		NewSandboxCreateBackupAction,
+		NewSandboxCreateSnapshotAction,
 		NewSandboxExpireSignedPortPreviewURLAction,
+		NewSandboxForkAction,
+		NewSandboxRecoverAction,
 		NewSandboxRevokeSSHAccessAction,
+		NewSandboxUpdateLastActivityAction,
 		NewSnapshotActivateAction,
 		NewSnapshotDeactivateAction,
 		NewWebhookInitializeAction,
