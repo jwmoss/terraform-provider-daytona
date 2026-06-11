@@ -15,7 +15,7 @@ func TestDaytonaProviderActions(t *testing.T) {
 	t.Parallel()
 
 	actions := (&DaytonaProvider{}).Actions(context.Background())
-	if got, want := len(actions), 29; got != want {
+	if got, want := len(actions), 30; got != want {
 		t.Fatalf("expected %d actions, got %d", want, got)
 	}
 
@@ -34,6 +34,7 @@ func TestDaytonaProviderActions(t *testing.T) {
 		"daytona_admin_create_user",
 		"daytona_admin_initialize_webhooks",
 		"daytona_admin_regenerate_user_key_pair",
+		"daytona_admin_recover_sandbox",
 		"daytona_admin_send_webhook",
 		"daytona_admin_set_default_docker_registry",
 		"daytona_admin_set_snapshot_general_status",

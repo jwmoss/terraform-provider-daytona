@@ -126,6 +126,7 @@ func (p *DaytonaProvider) Actions(ctx context.Context) []func() action.Action {
 		NewAdminCreateUserAction,
 		NewAdminInitializeWebhooksAction,
 		NewAdminRegenerateUserKeyPairAction,
+		NewAdminRecoverSandboxAction,
 		NewAdminSendWebhookAction,
 		NewAdminSetDefaultDockerRegistryAction,
 		NewAdminSetSnapshotGeneralStatusAction,
