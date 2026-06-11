@@ -159,6 +159,7 @@ func (p *DaytonaProvider) Actions(ctx context.Context) []func() action.Action {
 func (p *DaytonaProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewAdminOrganizationRegionQuotaResource,
+		NewAdminRunnerResource,
 		NewAPIKeyResource,
 		NewDockerRegistryResource,
 		NewOrganizationResource,
@@ -179,6 +180,8 @@ func (p *DaytonaProvider) DataSources(ctx context.Context) []func() datasource.D
 	return []func() datasource.DataSource{
 		NewAccountProvidersDataSource,
 		NewAdminAuditLogsDataSource,
+		NewAdminRunnerDataSource,
+		NewAdminRunnersDataSource,
 		NewAdminSnapshotImageCleanupStatusDataSource,
 		NewAdminUserDataSource,
 		NewAdminUsersDataSource,
