@@ -24,6 +24,8 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
 - Actions:
   - `daytona_accept_organization_invitation`
   - `daytona_activate_snapshot`
+  - `daytona_admin_set_default_docker_registry`
+  - `daytona_admin_set_snapshot_general_status`
   - `daytona_archive_sandbox`
   - `daytona_create_sandbox_backup`
   - `daytona_create_sandbox_snapshot`
@@ -47,6 +49,7 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_update_sandbox_last_activity`
 - Data sources:
   - `daytona_account_providers`
+  - `daytona_admin_snapshot_image_cleanup_status`
   - `daytona_api_key`
   - `daytona_api_keys`
   - `daytona_authenticated_runner_sandboxes`

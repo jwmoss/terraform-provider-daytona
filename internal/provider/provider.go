@@ -123,6 +123,8 @@ func (p *DaytonaProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 func (p *DaytonaProvider) Actions(ctx context.Context) []func() action.Action {
 	return []func() action.Action{
+		NewAdminSetDefaultDockerRegistryAction,
+		NewAdminSetSnapshotGeneralStatusAction,
 		NewAPIKeyForUserRevokeAction,
 		NewOrganizationInvitationAcceptAction,
 		NewOrganizationInvitationDeclineAction,
@@ -171,6 +173,7 @@ func (p *DaytonaProvider) Resources(ctx context.Context) []func() resource.Resou
 func (p *DaytonaProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewAccountProvidersDataSource,
+		NewAdminSnapshotImageCleanupStatusDataSource,
 		NewAPIKeyDataSource,
 		NewAPIKeysDataSource,
 		NewAuthenticatedRunnerSandboxesDataSource,
