@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -19,6 +20,10 @@ var _ datasource.DataSource = &collectionDataSource{}
 
 func NewCurrentAPIKeyDataSource() datasource.DataSource {
 	return &CurrentAPIKeyDataSource{}
+}
+
+func NewAPIKeysDataSource() datasource.DataSource {
+	return &collectionDataSource{kind: "api_keys"}
 }
 
 func NewVolumesDataSource() datasource.DataSource {
@@ -150,8 +155,10 @@ type collectionDataSourceModel struct {
 type collectionItemModel struct {
 	ID               types.String `tfsdk:"id"`
 	Name             types.String `tfsdk:"name"`
+	Value            types.String `tfsdk:"value"`
 	Description      types.String `tfsdk:"description"`
 	Email            types.String `tfsdk:"email"`
+	UserID           types.String `tfsdk:"user_id"`
 	CreatedBy        types.String `tfsdk:"created_by"`
 	InvitedBy        types.String `tfsdk:"invited_by"`
 	OrganizationID   types.String `tfsdk:"organization_id"`
@@ -174,6 +181,7 @@ type collectionItemModel struct {
 	Suspended        types.Bool   `tfsdk:"suspended"`
 	IsGlobal         types.Bool   `tfsdk:"is_global"`
 	ExpiresAt        types.String `tfsdk:"expires_at"`
+	LastUsedAt       types.String `tfsdk:"last_used_at"`
 	CreatedAt        types.String `tfsdk:"created_at"`
 	UpdatedAt        types.String `tfsdk:"updated_at"`
 }
@@ -192,8 +200,10 @@ func (d *collectionDataSource) Schema(ctx context.Context, req datasource.Schema
 				Attributes: map[string]schema.Attribute{
 					"id":                computedDataSourceStringAttribute("Object ID."),
 					"name":              computedDataSourceStringAttribute("Object name."),
+					"value":             sensitiveComputedDataSourceStringAttribute("Sensitive or masked object value, when applicable."),
 					"description":       computedDataSourceStringAttribute("Object description."),
 					"email":             computedDataSourceStringAttribute("Email address, when applicable."),
+					"user_id":           computedDataSourceStringAttribute("User ID, when applicable."),
 					"created_by":        computedDataSourceStringAttribute("Creator user ID, when applicable."),
 					"invited_by":        computedDataSourceStringAttribute("Inviter email address, when applicable."),
 					"organization_id":   computedDataSourceStringAttribute("Owning organization ID."),
@@ -216,6 +226,7 @@ func (d *collectionDataSource) Schema(ctx context.Context, req datasource.Schema
 					"suspended":         computedDataSourceBoolAttribute("Whether the organization is suspended."),
 					"is_global":         computedDataSourceBoolAttribute("Whether the role is a global Daytona role."),
 					"expires_at":        computedDataSourceStringAttribute("Expiration timestamp, when applicable."),
+					"last_used_at":      computedDataSourceStringAttribute("Last-used timestamp, when applicable."),
 					"created_at":        computedDataSourceStringAttribute("Creation timestamp."),
 					"updated_at":        computedDataSourceStringAttribute("Update timestamp."),
 				},
@@ -233,7 +244,7 @@ func (d *collectionDataSource) Schema(ctx context.Context, req datasource.Schema
 	}
 
 	resp.Schema = schema.Schema{
-		MarkdownDescription: fmt.Sprintf("Lists Daytona %s visible to the configured credentials.", d.kind),
+		MarkdownDescription: fmt.Sprintf("Lists Daytona %s visible to the configured credentials.", d.displayName()),
 		Attributes:          attributes,
 	}
 }
@@ -270,6 +281,30 @@ func (d *collectionDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 func (d *collectionDataSource) readItems(ctx context.Context, organizationID types.String, diags *diag.Diagnostics) ([]collectionItemModel, error) {
 	switch d.kind {
+	case "api_keys":
+		apiKeys, httpResp, err := d.client.api.ApiKeysAPI.ListApiKeys(ctx).Execute()
+		if err != nil {
+			addAPIError(diags, "Unable to list Daytona API keys", "list API keys", httpResp, err)
+			return nil, err
+		}
+		items := make([]collectionItemModel, 0, len(apiKeys))
+		for _, apiKey := range apiKeys {
+			item := newCollectionItem()
+			item.ID = types.StringValue(apiKey.Name)
+			item.Name = types.StringValue(apiKey.Name)
+			item.Value = types.StringValue(apiKey.Value)
+			item.Permissions = setStringValue(ctx, apiKey.Permissions)
+			item.UserID = types.StringValue(apiKey.UserId)
+			item.CreatedAt = terraformTimeString(apiKey.CreatedAt)
+			if value, ok := apiKey.GetLastUsedAtOk(); ok && value != nil {
+				item.LastUsedAt = terraformTimeString(*value)
+			}
+			if value, ok := apiKey.GetExpiresAtOk(); ok && value != nil {
+				item.ExpiresAt = terraformTimeString(*value)
+			}
+			items = append(items, item)
+		}
+		return items, nil
 	case "volumes":
 		volumes, httpResp, err := d.client.api.VolumesAPI.ListVolumes(ctx).Execute()
 		if err != nil {
@@ -491,12 +526,18 @@ func (d *collectionDataSource) requiresOrganizationID() bool {
 	}
 }
 
+func (d *collectionDataSource) displayName() string {
+	return strings.ReplaceAll(d.kind, "_", " ")
+}
+
 func newCollectionItem() collectionItemModel {
 	return collectionItemModel{
 		ID:               types.StringNull(),
 		Name:             types.StringNull(),
+		Value:            types.StringNull(),
 		Description:      types.StringNull(),
 		Email:            types.StringNull(),
+		UserID:           types.StringNull(),
 		CreatedBy:        types.StringNull(),
 		InvitedBy:        types.StringNull(),
 		OrganizationID:   types.StringNull(),
@@ -519,6 +560,7 @@ func newCollectionItem() collectionItemModel {
 		Suspended:        types.BoolNull(),
 		IsGlobal:         types.BoolNull(),
 		ExpiresAt:        types.StringNull(),
+		LastUsedAt:       types.StringNull(),
 		CreatedAt:        types.StringNull(),
 		UpdatedAt:        types.StringNull(),
 	}

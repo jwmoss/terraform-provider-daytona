@@ -11,6 +11,7 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_docker_registry`
   - `daytona_organization`
   - `daytona_organization_invitation`
+  - `daytona_organization_member_access`
   - `daytona_organization_role`
   - `daytona_region`
   - `daytona_runner`
@@ -18,6 +19,7 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_snapshot`
   - `daytona_volume`
 - Data sources:
+  - `daytona_api_keys`
   - `daytona_current_api_key`
   - `daytona_docker_registries`
   - `daytona_organization_invitations`

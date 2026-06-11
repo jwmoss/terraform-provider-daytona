@@ -40,6 +40,7 @@ Read-Only:
 - `id` (String) Object ID.
 - `invited_by` (String) Inviter email address, when applicable.
 - `is_global` (Boolean) Whether the role is a global Daytona role.
+- `last_used_at` (String) Last-used timestamp, when applicable.
 - `name` (String) Object name.
 - `organization_id` (String) Owning organization ID.
 - `organization_name` (String) Owning organization name.
@@ -57,4 +58,6 @@ Read-Only:
 - `type` (String) Object type.
 - `updated_at` (String) Update timestamp.
 - `url` (String) Object URL, when applicable.
+- `user_id` (String) User ID, when applicable.
 - `username` (String) Username, when applicable.
+- `value` (String, Sensitive) Sensitive or masked object value, when applicable.
