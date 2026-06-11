@@ -37,16 +37,20 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_organization_otel_config`
   - `daytona_organization_roles`
   - `daytona_organization_usage`
+  - `daytona_organization`
   - `daytona_organizations`
   - `daytona_region`
   - `daytona_regions`
+  - `daytona_runner`
   - `daytona_runners`
   - `daytona_sandbox_build_logs_url`
   - `daytona_sandbox_port_preview_url`
   - `daytona_sandbox_ssh_access`
+  - `daytona_sandbox`
   - `daytona_sandboxes`
   - `daytona_shared_regions`
   - `daytona_snapshot_build_logs_url`
+  - `daytona_snapshot`
   - `daytona_snapshots`
   - `daytona_volume`
   - `daytona_volumes`
