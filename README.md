@@ -34,6 +34,7 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_link_account`
   - `daytona_recover_sandbox`
   - `daytona_refresh_webhook_endpoints`
+  - `daytona_revoke_api_key_for_user`
   - `daytona_revoke_sandbox_ssh_access`
   - `daytona_suspend_organization`
   - `daytona_unlink_account`

@@ -10,7 +10,7 @@ The provider accepts either `api_key`/`DAYTONA_API_KEY` or `access_token`/`DAYTO
 
 | Daytona API area | Terraform coverage |
 | --- | --- |
-| API keys | `daytona_api_key` resource, `daytona_api_key`, `daytona_api_keys`, and `daytona_current_api_key` data sources cover create, read, list, and delete for normal API keys. |
+| API keys | `daytona_api_key` resource, `daytona_api_key`, `daytona_api_keys`, and `daytona_current_api_key` data sources cover create, read, list, and delete for normal API keys. `daytona_revoke_api_key_for_user` exposes Daytona's user-specific API key revocation route as a Terraform 1.14 provider-defined action. |
 | Config and users | `daytona_config`, `daytona_current_user`, `daytona_current_user_organization_invitations`, and `daytona_account_providers` cover managed-service configuration, authenticated-user/account-provider discovery, and pending authenticated-user organization invitations. `daytona_link_account`, `daytona_unlink_account`, and `daytona_enroll_sms_mfa` expose current-user account-linking and SMS MFA enrollment flows as Terraform 1.14 provider-defined actions. |
 | Docker registries | `daytona_docker_registry` resource plus `daytona_docker_registry`, `daytona_docker_registries`, and `daytona_docker_registry_push_access` data sources cover registry CRUD and temporary push credentials. |
 | Health | `daytona_health` covers Daytona liveness and readiness checks, including structured unhealthy readiness responses. |
