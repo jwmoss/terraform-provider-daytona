@@ -15,7 +15,7 @@ func TestDaytonaProviderActions(t *testing.T) {
 	t.Parallel()
 
 	actions := (&DaytonaProvider{}).Actions(context.Background())
-	if got, want := len(actions), 2; got != want {
+	if got, want := len(actions), 4; got != want {
 		t.Fatalf("expected %d actions, got %d", want, got)
 	}
 
@@ -28,7 +28,12 @@ func TestDaytonaProviderActions(t *testing.T) {
 		actionNames[metadataResp.TypeName] = true
 	}
 
-	for _, name := range []string{"daytona_activate_snapshot", "daytona_deactivate_snapshot"} {
+	for _, name := range []string{
+		"daytona_activate_snapshot",
+		"daytona_deactivate_snapshot",
+		"daytona_expire_sandbox_signed_port_preview_url",
+		"daytona_revoke_sandbox_ssh_access",
+	} {
 		if !actionNames[name] {
 			t.Fatalf("expected action %q to be registered, got %#v", name, actionNames)
 		}
