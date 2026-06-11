@@ -9,13 +9,13 @@ The Terraform surface focuses on durable SaaS infrastructure, read-only discover
 | Daytona API area | Terraform coverage |
 | --- | --- |
 | API keys | `daytona_api_key` resource, `daytona_api_key`, `daytona_api_keys`, and `daytona_current_api_key` data sources cover create, read, list, and delete for normal API keys. |
-| Config and users | `daytona_config`, `daytona_current_user`, and `daytona_account_providers` cover managed-service configuration and authenticated-user/account-provider discovery. |
+| Config and users | `daytona_config`, `daytona_current_user`, `daytona_current_user_organization_invitations`, and `daytona_account_providers` cover managed-service configuration, authenticated-user/account-provider discovery, and pending authenticated-user organization invitations. |
 | Docker registries | `daytona_docker_registry` resource plus `daytona_docker_registry`, `daytona_docker_registries`, and `daytona_docker_registry_push_access` data sources cover registry CRUD and temporary push credentials. |
 | Health | `daytona_health` covers Daytona liveness and readiness checks, including structured unhealthy readiness responses. |
 | Jobs | `daytona_job` and `daytona_jobs` cover job read/list. Job status mutation is runtime-owned and not exposed. |
 | Object storage | `daytona_object_storage_push_access` covers temporary object-storage push credentials. |
 | Organizations | `daytona_organization` resource and `daytona_organization`, `daytona_organizations`, `daytona_organization_usage`, and `daytona_organization_audit_logs` data sources cover organization CRUD, default region, quotas/rate limits, experimental config, sandbox egress default, usage, and audit logs. |
-| Organization invitations | `daytona_organization_invitation` resource plus `daytona_organization_invitation` and `daytona_organization_invitations` data sources cover invitation create/update/cancel and read/list. Accept/decline invitations are user actions and not modeled as Terraform-managed state. |
+| Organization invitations | `daytona_organization_invitation` resource plus `daytona_organization_invitation`, `daytona_organization_invitations`, and `daytona_current_user_organization_invitations` data sources cover invitation create/update/cancel, organization-scoped read/list, and authenticated-user list/count. Accept/decline invitations are user actions and not modeled as Terraform-managed state. |
 | Organization members | `daytona_organization_member_access`, `daytona_organization_member`, and `daytona_organization_members` cover member access management and read/list. |
 | Organization OTEL config | `daytona_organization_otel_config` resource and data source cover get/update/delete of organization OpenTelemetry export settings. |
 | Organization roles | `daytona_organization_role` resource plus `daytona_organization_role` and `daytona_organization_roles` data sources cover role create/update/delete and read/list. |
