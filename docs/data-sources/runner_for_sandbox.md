@@ -3,12 +3,12 @@
 page_title: "daytona_runner_for_sandbox Data Source - daytona"
 subcategory: ""
 description: |-
-  Reads full Daytona runner details for a sandbox.
+  Reads full Daytona runner details for a sandbox through Daytona runner/proxy-authenticated routes.
 ---
 
 # daytona_runner_for_sandbox (Data Source)
 
-Reads full Daytona runner details for a sandbox.
+Reads full Daytona runner details for a sandbox through Daytona runner/proxy-authenticated routes.
 
 ## Example Usage
 

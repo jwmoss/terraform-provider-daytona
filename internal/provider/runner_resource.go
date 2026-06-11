@@ -56,7 +56,7 @@ func (r *RunnerResource) Metadata(ctx context.Context, req resource.MetadataRequ
 
 func (r *RunnerResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Daytona runner registration.",
+		MarkdownDescription: "Manages a Daytona custom runner registration. Daytona exposes custom runner create/list/update/delete only when organization infrastructure is enabled for the organization.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:            true,
@@ -67,7 +67,7 @@ func (r *RunnerResource) Schema(ctx context.Context, req resource.SchemaRequest,
 			},
 			"region_id": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "Region ID where the runner is registered.",
+				MarkdownDescription: "Custom region ID where the runner is registered.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},

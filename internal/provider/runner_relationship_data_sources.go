@@ -109,7 +109,7 @@ func (d *RunnerFullDataSource) Metadata(ctx context.Context, req datasource.Meta
 
 func (d *RunnerFullDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads full Daytona runner details by runner ID.",
+		MarkdownDescription: "Reads full Daytona runner details by runner ID through Daytona runner/proxy-authenticated routes.",
 		Attributes:          runnerFullDataSourceAttributes("id"),
 	}
 }
@@ -157,7 +157,7 @@ func (d *RunnerForSandboxDataSource) Metadata(ctx context.Context, req datasourc
 
 func (d *RunnerForSandboxDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads full Daytona runner details for a sandbox.",
+		MarkdownDescription: "Reads full Daytona runner details for a sandbox through Daytona runner/proxy-authenticated routes.",
 		Attributes:          runnerFullDataSourceAttributes("sandbox_id"),
 	}
 }
@@ -206,7 +206,7 @@ func (d *RunnersBySnapshotRefDataSource) Metadata(ctx context.Context, req datas
 
 func (d *RunnersBySnapshotRefDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lists Daytona runner snapshot mappings by snapshot ref.",
+		MarkdownDescription: "Lists Daytona runner snapshot mappings by snapshot ref through Daytona runner/proxy-authenticated routes.",
 		Attributes: map[string]schema.Attribute{
 			"id":  computedDataSourceStringAttribute("Data source identifier."),
 			"ref": requiredDataSourceStringAttribute("Snapshot ref."),

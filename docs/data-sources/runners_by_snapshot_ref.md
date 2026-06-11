@@ -3,12 +3,12 @@
 page_title: "daytona_runners_by_snapshot_ref Data Source - daytona"
 subcategory: ""
 description: |-
-  Lists Daytona runner snapshot mappings by snapshot ref.
+  Lists Daytona runner snapshot mappings by snapshot ref through Daytona runner/proxy-authenticated routes.
 ---
 
 # daytona_runners_by_snapshot_ref (Data Source)
 
-Lists Daytona runner snapshot mappings by snapshot ref.
+Lists Daytona runner snapshot mappings by snapshot ref through Daytona runner/proxy-authenticated routes.
 
 ## Example Usage
 

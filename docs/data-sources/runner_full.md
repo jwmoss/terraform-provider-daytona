@@ -3,12 +3,12 @@
 page_title: "daytona_runner_full Data Source - daytona"
 subcategory: ""
 description: |-
-  Reads full Daytona runner details by runner ID.
+  Reads full Daytona runner details by runner ID through Daytona runner/proxy-authenticated routes.
 ---
 
 # daytona_runner_full (Data Source)
 
-Reads full Daytona runner details by runner ID.
+Reads full Daytona runner details by runner ID through Daytona runner/proxy-authenticated routes.
 
 ## Example Usage
 

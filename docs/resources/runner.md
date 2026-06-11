@@ -3,12 +3,12 @@
 page_title: "daytona_runner Resource - daytona"
 subcategory: ""
 description: |-
-  Manages a Daytona runner registration.
+  Manages a Daytona custom runner registration. Daytona exposes custom runner create/list/update/delete only when organization infrastructure is enabled for the organization.
 ---
 
 # daytona_runner (Resource)
 
-Manages a Daytona runner registration.
+Manages a Daytona custom runner registration. Daytona exposes custom runner create/list/update/delete only when organization infrastructure is enabled for the organization.
 
 ## Example Usage
 
@@ -27,7 +27,7 @@ resource "daytona_runner" "example" {
 ### Required
 
 - `name` (String) Runner name.
-- `region_id` (String) Region ID where the runner is registered.
+- `region_id` (String) Custom region ID where the runner is registered.
 
 ### Optional
 

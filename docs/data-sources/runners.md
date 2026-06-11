@@ -3,12 +3,12 @@
 page_title: "daytona_runners Data Source - daytona"
 subcategory: ""
 description: |-
-  Lists Daytona runners visible to the configured credentials.
+  Lists Daytona custom runners visible to the configured credentials. Daytona exposes this endpoint only when organization infrastructure is enabled for the organization.
 ---
 
 # daytona_runners (Data Source)
 
-Lists Daytona runners visible to the configured credentials.
+Lists Daytona custom runners visible to the configured credentials. Daytona exposes this endpoint only when organization infrastructure is enabled for the organization.
 
 ## Example Usage
 

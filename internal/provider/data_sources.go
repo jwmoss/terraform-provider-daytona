@@ -248,7 +248,7 @@ func (d *collectionDataSource) Schema(ctx context.Context, req datasource.Schema
 	}
 
 	resp.Schema = schema.Schema{
-		MarkdownDescription: fmt.Sprintf("Lists Daytona %s visible to the configured credentials.", d.displayName()),
+		MarkdownDescription: d.markdownDescription(),
 		Attributes:          attributes,
 	}
 }
@@ -552,6 +552,14 @@ func (d *collectionDataSource) requiresOrganizationID() bool {
 
 func (d *collectionDataSource) displayName() string {
 	return strings.ReplaceAll(d.kind, "_", " ")
+}
+
+func (d *collectionDataSource) markdownDescription() string {
+	if d.kind == "runners" {
+		return "Lists Daytona custom runners visible to the configured credentials. Daytona exposes this endpoint only when organization infrastructure is enabled for the organization."
+	}
+
+	return fmt.Sprintf("Lists Daytona %s visible to the configured credentials.", d.displayName())
 }
 
 func newCollectionItem() collectionItemModel {
