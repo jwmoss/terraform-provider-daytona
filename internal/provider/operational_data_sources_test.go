@@ -21,6 +21,7 @@ provider "daytona" {}
 
 data "daytona_config" "test" {}
 data "daytona_current_user" "test" {}
+data "daytona_current_user_organization_invitations" "test" {}
 data "daytona_account_providers" "test" {}
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -28,6 +29,7 @@ data "daytona_account_providers" "test" {}
 					resource.TestCheckResourceAttrSet("data.daytona_config.test", "version"),
 					resource.TestCheckResourceAttrSet("data.daytona_current_user.test", "id"),
 					resource.TestCheckResourceAttrSet("data.daytona_current_user.test", "email"),
+					resource.TestCheckResourceAttr("data.daytona_current_user_organization_invitations.test", "id", "current_user_organization_invitations"),
 					resource.TestCheckResourceAttr("data.daytona_account_providers.test", "id", "account_providers"),
 				),
 			},

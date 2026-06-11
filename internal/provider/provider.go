@@ -140,6 +140,7 @@ func (p *DaytonaProvider) DataSources(ctx context.Context) []func() datasource.D
 		NewAPIKeysDataSource,
 		NewConfigDataSource,
 		NewCurrentAPIKeyDataSource,
+		NewCurrentUserOrganizationInvitationsDataSource,
 		NewCurrentUserDataSource,
 		NewDockerRegistriesDataSource,
 		NewDockerRegistryDataSource,

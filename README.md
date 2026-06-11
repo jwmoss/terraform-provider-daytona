@@ -33,6 +33,7 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_config`
   - `daytona_current_api_key`
   - `daytona_current_user`
+  - `daytona_current_user_organization_invitations`
   - `daytona_docker_registries`
   - `daytona_docker_registry`
   - `daytona_docker_registry_push_access`
