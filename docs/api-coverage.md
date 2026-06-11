@@ -11,7 +11,7 @@ The provider accepts either `api_key`/`DAYTONA_API_KEY` or `access_token`/`DAYTO
 | Daytona API area | Terraform coverage |
 | --- | --- |
 | API keys | `daytona_api_key` resource, `daytona_api_key`, `daytona_api_keys`, and `daytona_current_api_key` data sources cover create, read, list, and delete for normal API keys. |
-| Config and users | `daytona_config`, `daytona_current_user`, `daytona_current_user_organization_invitations`, and `daytona_account_providers` cover managed-service configuration, authenticated-user/account-provider discovery, and pending authenticated-user organization invitations. |
+| Config and users | `daytona_config`, `daytona_current_user`, `daytona_current_user_organization_invitations`, and `daytona_account_providers` cover managed-service configuration, authenticated-user/account-provider discovery, and pending authenticated-user organization invitations. `daytona_link_account`, `daytona_unlink_account`, and `daytona_enroll_sms_mfa` expose current-user account-linking and SMS MFA enrollment flows as Terraform 1.14 provider-defined actions. |
 | Docker registries | `daytona_docker_registry` resource plus `daytona_docker_registry`, `daytona_docker_registries`, and `daytona_docker_registry_push_access` data sources cover registry CRUD and temporary push credentials. |
 | Health | `daytona_health` covers Daytona liveness and readiness checks, including structured unhealthy readiness responses. |
 | Jobs | `daytona_job` and `daytona_jobs` cover job read/list. Job status mutation is runtime-owned and not exposed. |
@@ -37,7 +37,6 @@ The provider accepts either `api_key`/`DAYTONA_API_KEY` or `access_token`/`DAYTO
 | Admin APIs | Daytona admin-only operations manage global users, runners, region quotas, webhook internals, default registries, snapshot global flags, and global audit logs. These are not normal organization-scoped Terraform provider surfaces. |
 | Deprecated toolbox APIs | The generated client marks the toolbox file, git, process, session, PTY, LSP, computer-use, mouse, keyboard, and screenshot endpoints as deprecated. These are runtime control-plane actions, not durable Terraform state. |
 | Runner self-service and job queue APIs | Authenticated-runner info, runner healthcheck, job polling, and job status updates are runner-agent protocol endpoints, not user-managed Terraform infrastructure. Authenticated-runner sandbox assignment is covered by `daytona_authenticated_runner_sandboxes`; user-facing full runner details, scheduling/draining controls, and sandbox/snapshot-ref runner lookups are covered. |
-| User account linking and MFA actions | Account link/unlink and SMS MFA enrollment are interactive user-security flows, not organization infrastructure state. |
 
 ## Live Verification Gaps
 
