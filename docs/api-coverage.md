@@ -11,6 +11,7 @@ The Terraform surface focuses on durable SaaS infrastructure and read-only disco
 | API keys | `daytona_api_key` resource, `daytona_api_key`, `daytona_api_keys`, and `daytona_current_api_key` data sources cover create, read, list, and delete for normal API keys. |
 | Config and users | `daytona_config`, `daytona_current_user`, and `daytona_account_providers` cover managed-service configuration and authenticated-user/account-provider discovery. |
 | Docker registries | `daytona_docker_registry` resource plus `daytona_docker_registry`, `daytona_docker_registries`, and `daytona_docker_registry_push_access` data sources cover registry CRUD and temporary push credentials. |
+| Health | `daytona_health` covers Daytona liveness and readiness checks, including structured unhealthy readiness responses. |
 | Jobs | `daytona_job` and `daytona_jobs` cover job read/list. Job status mutation is runtime-owned and not exposed. |
 | Object storage | `daytona_object_storage_push_access` covers temporary object-storage push credentials. |
 | Organizations | `daytona_organization` resource and `daytona_organization`, `daytona_organizations`, `daytona_organization_usage`, and `daytona_organization_audit_logs` data sources cover organization CRUD, default region, quotas/rate limits, experimental config, sandbox egress default, usage, and audit logs. |
@@ -39,7 +40,6 @@ The Terraform surface focuses on durable SaaS infrastructure and read-only disco
 | Runner scheduling/draining updates | Daytona's OpenAPI describes body fields for scheduling/draining, but the generated Go client request types do not currently expose body setters for those endpoints. |
 | Region credential regeneration | Proxy, SSH gateway, and snapshot-manager credential regeneration endpoints rotate secrets as one-off actions. Region create stores initial generated credentials as sensitive Terraform state. |
 | Organization invitation accept/decline/leave/suspend | These are user/account lifecycle actions or admin/suspension actions, not desired-state infrastructure resources. |
-| Health endpoints | Daytona live/health checks are service readiness checks. They are useful for diagnostics but not required for infrastructure provisioning state. |
 
 ## Live Verification Gaps
 
