@@ -152,6 +152,35 @@ export DAYTONA_API_URL="https://app.daytona.io/api"
 
 Daytona API keys work for API-key-enabled routes such as current API-key lookup and volume management. Daytona org/user provisioning and discovery routes are JWT-only in the current Daytona API; set `DAYTONA_ACCESS_TOKEN` and `DAYTONA_ORGANIZATION_ID` for those routes. When both token types are set, `DAYTONA_ACCESS_TOKEN` takes precedence.
 
+## Use From GitHub Source
+
+Terraform provider installation uses provider addresses rather than module-style GitHub sources. Until this provider is published to Terraform Registry, install the provider binary from GitHub and point Terraform at the local build:
+
+```shell
+go install github.com/jwmoss/terraform-provider-daytona@main
+
+cat > ~/.terraformrc <<EOF
+provider_installation {
+  dev_overrides {
+    "jwmoss/daytona" = "$HOME/go/bin"
+  }
+  direct {}
+}
+EOF
+```
+
+Terraform configurations and modules can then use the same provider address shown above:
+
+```terraform
+terraform {
+  required_providers {
+    daytona = {
+      source = "jwmoss/daytona"
+    }
+  }
+}
+```
+
 ## Development
 
 Requirements:
