@@ -6,6 +6,8 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -16,6 +18,11 @@ var _ datasource.DataSource = &SandboxSSHAccessDataSource{}
 var _ datasource.DataSource = &SandboxBuildLogsURLDataSource{}
 var _ datasource.DataSource = &SandboxPortPreviewURLDataSource{}
 var _ datasource.DataSource = &SandboxSignedPortPreviewURLDataSource{}
+var _ datasource.DataSource = &SandboxPublicStatusDataSource{}
+var _ datasource.DataSource = &SandboxAuthTokenValidationDataSource{}
+var _ datasource.DataSource = &SandboxAccessDataSource{}
+var _ datasource.DataSource = &SandboxIDFromSignedPreviewTokenDataSource{}
+var _ datasource.DataSource = &SandboxSSHAccessValidationDataSource{}
 var _ datasource.DataSource = &SnapshotBuildLogsURLDataSource{}
 
 func NewSandboxSSHAccessDataSource() datasource.DataSource {
@@ -32,6 +39,26 @@ func NewSandboxPortPreviewURLDataSource() datasource.DataSource {
 
 func NewSandboxSignedPortPreviewURLDataSource() datasource.DataSource {
 	return &SandboxSignedPortPreviewURLDataSource{}
+}
+
+func NewSandboxPublicStatusDataSource() datasource.DataSource {
+	return &SandboxPublicStatusDataSource{}
+}
+
+func NewSandboxAuthTokenValidationDataSource() datasource.DataSource {
+	return &SandboxAuthTokenValidationDataSource{}
+}
+
+func NewSandboxAccessDataSource() datasource.DataSource {
+	return &SandboxAccessDataSource{}
+}
+
+func NewSandboxIDFromSignedPreviewTokenDataSource() datasource.DataSource {
+	return &SandboxIDFromSignedPreviewTokenDataSource{}
+}
+
+func NewSandboxSSHAccessValidationDataSource() datasource.DataSource {
+	return &SandboxSSHAccessValidationDataSource{}
 }
 
 func NewSnapshotBuildLogsURLDataSource() datasource.DataSource {
@@ -360,6 +387,381 @@ func (d *SandboxSignedPortPreviewURLDataSource) Read(ctx context.Context, req da
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+type SandboxPublicStatusDataSource struct {
+	client *daytonaClient
+}
+
+type sandboxPublicStatusDataSourceModel struct {
+	ID        types.String `tfsdk:"id"`
+	SandboxID types.String `tfsdk:"sandbox_id"`
+	Public    types.Bool   `tfsdk:"public"`
+}
+
+type sandboxPublicStatusConfigModel struct {
+	SandboxID types.String `tfsdk:"sandbox_id"`
+}
+
+func (d *SandboxPublicStatusDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_sandbox_public_status"
+}
+
+func (d *SandboxPublicStatusDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Checks whether a Daytona sandbox is public through the preview API.",
+		Attributes: map[string]schema.Attribute{
+			"id":         computedDataSourceStringAttribute("Data source identifier."),
+			"sandbox_id": requiredDataSourceStringAttribute("Sandbox ID."),
+			"public":     computedDataSourceBoolAttribute("Whether the sandbox is public."),
+		},
+	}
+}
+
+func (d *SandboxPublicStatusDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	client := configureDataSourceClient(req.ProviderData, &resp.Diagnostics)
+	if client == nil {
+		return
+	}
+	d.client = client
+}
+
+func (d *SandboxPublicStatusDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var config sandboxPublicStatusConfigModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	public, httpResp, err := d.client.api.PreviewAPI.IsSandboxPublic(ctx, config.SandboxID.ValueString()).Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to check Daytona sandbox public status", "check sandbox public status", httpResp, err)
+		return
+	}
+
+	data := sandboxPublicStatusDataSourceModel{
+		ID:        types.StringValue(config.SandboxID.ValueString() + ":public_status"),
+		SandboxID: config.SandboxID,
+		Public:    types.BoolValue(public),
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+type SandboxAuthTokenValidationDataSource struct {
+	client *daytonaClient
+}
+
+type sandboxAuthTokenValidationDataSourceModel struct {
+	ID        types.String `tfsdk:"id"`
+	SandboxID types.String `tfsdk:"sandbox_id"`
+	AuthToken types.String `tfsdk:"auth_token"`
+	Valid     types.Bool   `tfsdk:"valid"`
+}
+
+type sandboxAuthTokenValidationConfigModel struct {
+	SandboxID types.String `tfsdk:"sandbox_id"`
+	AuthToken types.String `tfsdk:"auth_token"`
+}
+
+func (d *SandboxAuthTokenValidationDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_sandbox_auth_token_validation"
+}
+
+func (d *SandboxAuthTokenValidationDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Validates a Daytona sandbox auth token through the preview API.",
+		Attributes: map[string]schema.Attribute{
+			"id":         computedDataSourceStringAttribute("Data source identifier."),
+			"sandbox_id": requiredDataSourceStringAttribute("Sandbox ID."),
+			"auth_token": requiredSensitiveDataSourceStringAttribute("Sandbox auth token to validate."),
+			"valid":      computedDataSourceBoolAttribute("Whether the sandbox auth token is valid."),
+		},
+	}
+}
+
+func (d *SandboxAuthTokenValidationDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	client := configureDataSourceClient(req.ProviderData, &resp.Diagnostics)
+	if client == nil {
+		return
+	}
+	d.client = client
+}
+
+func (d *SandboxAuthTokenValidationDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var config sandboxAuthTokenValidationConfigModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	authToken := strings.TrimSpace(config.AuthToken.ValueString())
+	if authToken == "" {
+		resp.Diagnostics.AddError(
+			"Missing Daytona sandbox auth token",
+			"Configure auth_token with the Daytona sandbox auth token to validate.",
+		)
+		return
+	}
+
+	valid, httpResp, err := d.client.api.PreviewAPI.IsValidAuthToken(ctx, config.SandboxID.ValueString(), authToken).Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to validate Daytona sandbox auth token", "validate sandbox auth token", httpResp, err)
+		return
+	}
+
+	data := sandboxAuthTokenValidationDataSourceModel{
+		ID:        types.StringValue(config.SandboxID.ValueString() + ":auth_token_validation"),
+		SandboxID: config.SandboxID,
+		AuthToken: config.AuthToken,
+		Valid:     types.BoolValue(valid),
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+type SandboxAccessDataSource struct {
+	client *daytonaClient
+}
+
+type sandboxAccessDataSourceModel struct {
+	ID        types.String `tfsdk:"id"`
+	SandboxID types.String `tfsdk:"sandbox_id"`
+	HasAccess types.Bool   `tfsdk:"has_access"`
+}
+
+type sandboxAccessConfigModel struct {
+	SandboxID types.String `tfsdk:"sandbox_id"`
+}
+
+func (d *SandboxAccessDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_sandbox_access"
+}
+
+func (d *SandboxAccessDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Checks whether the authenticated Daytona user has access to a sandbox.",
+		Attributes: map[string]schema.Attribute{
+			"id":         computedDataSourceStringAttribute("Data source identifier."),
+			"sandbox_id": requiredDataSourceStringAttribute("Sandbox ID."),
+			"has_access": computedDataSourceBoolAttribute("Whether the authenticated user has access to the sandbox."),
+		},
+	}
+}
+
+func (d *SandboxAccessDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	client := configureDataSourceClient(req.ProviderData, &resp.Diagnostics)
+	if client == nil {
+		return
+	}
+	d.client = client
+}
+
+func (d *SandboxAccessDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var config sandboxAccessConfigModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	hasAccess, httpResp, err := d.client.api.PreviewAPI.HasSandboxAccess(ctx, config.SandboxID.ValueString()).Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to check Daytona sandbox access", "check sandbox access", httpResp, err)
+		return
+	}
+
+	data := sandboxAccessDataSourceModel{
+		ID:        types.StringValue(config.SandboxID.ValueString() + ":access"),
+		SandboxID: config.SandboxID,
+		HasAccess: types.BoolValue(hasAccess),
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+type SandboxIDFromSignedPreviewTokenDataSource struct {
+	client *daytonaClient
+}
+
+type sandboxIDFromSignedPreviewTokenDataSourceModel struct {
+	ID                 types.String `tfsdk:"id"`
+	SignedPreviewToken types.String `tfsdk:"signed_preview_token"`
+	Port               types.Int64  `tfsdk:"port"`
+	SandboxID          types.String `tfsdk:"sandbox_id"`
+}
+
+type sandboxIDFromSignedPreviewTokenConfigModel struct {
+	SignedPreviewToken types.String `tfsdk:"signed_preview_token"`
+	Port               types.Int64  `tfsdk:"port"`
+}
+
+func (d *SandboxIDFromSignedPreviewTokenDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_sandbox_id_from_signed_preview_token"
+}
+
+func (d *SandboxIDFromSignedPreviewTokenDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Reads the Daytona sandbox ID encoded in a signed preview URL token.",
+		Attributes: map[string]schema.Attribute{
+			"id":                   computedDataSourceStringAttribute("Data source identifier."),
+			"signed_preview_token": requiredSensitiveDataSourceStringAttribute("Signed preview URL token."),
+			"port": schema.Int64Attribute{
+				Required:            true,
+				MarkdownDescription: "Sandbox port number from the signed preview URL.",
+			},
+			"sandbox_id": computedDataSourceStringAttribute("Sandbox ID from the signed preview URL token."),
+		},
+	}
+}
+
+func (d *SandboxIDFromSignedPreviewTokenDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	client := configureDataSourceClient(req.ProviderData, &resp.Diagnostics)
+	if client == nil {
+		return
+	}
+	d.client = client
+}
+
+func (d *SandboxIDFromSignedPreviewTokenDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var config sandboxIDFromSignedPreviewTokenConfigModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	signedPreviewToken := strings.TrimSpace(config.SignedPreviewToken.ValueString())
+	if signedPreviewToken == "" {
+		resp.Diagnostics.AddError(
+			"Missing Daytona signed preview URL token",
+			"Configure signed_preview_token with the signed preview URL token to inspect.",
+		)
+		return
+	}
+
+	port, ok := int32Port(config.Port.ValueInt64())
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Invalid Daytona sandbox port",
+			"Configure port with an integer from 1 to 65535.",
+		)
+		return
+	}
+
+	sandboxID, httpResp, err := d.client.api.PreviewAPI.GetSandboxIdFromSignedPreviewUrlToken(ctx, signedPreviewToken, float32(port)).Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to read Daytona sandbox ID from signed preview URL token", "read sandbox ID from signed preview URL token", httpResp, err)
+		return
+	}
+	sandboxID = normalizeStringResponse(sandboxID)
+
+	data := sandboxIDFromSignedPreviewTokenDataSourceModel{
+		ID:                 types.StringValue(fmt.Sprintf("%d:signed_preview_token_sandbox", port)),
+		SignedPreviewToken: config.SignedPreviewToken,
+		Port:               config.Port,
+		SandboxID:          types.StringValue(sandboxID),
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func normalizeStringResponse(value string) string {
+	value = strings.TrimSpace(value)
+	if unquoted, err := strconv.Unquote(value); err == nil {
+		return unquoted
+	}
+	return value
+}
+
+type SandboxSSHAccessValidationDataSource struct {
+	client *daytonaClient
+}
+
+type sandboxSSHAccessValidationDataSourceModel struct {
+	ID                    types.String `tfsdk:"id"`
+	Token                 types.String `tfsdk:"token"`
+	RequestOrganizationID types.String `tfsdk:"request_organization_id"`
+	Valid                 types.Bool   `tfsdk:"valid"`
+	SandboxID             types.String `tfsdk:"sandbox_id"`
+}
+
+type sandboxSSHAccessValidationConfigModel struct {
+	Token                 types.String `tfsdk:"token"`
+	RequestOrganizationID types.String `tfsdk:"request_organization_id"`
+}
+
+func (d *SandboxSSHAccessValidationDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_sandbox_ssh_access_validation"
+}
+
+func (d *SandboxSSHAccessValidationDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Validates a Daytona sandbox SSH access token.",
+		Attributes: map[string]schema.Attribute{
+			"id":                      computedDataSourceStringAttribute("Data source identifier."),
+			"token":                   requiredSensitiveDataSourceStringAttribute("SSH access token to validate."),
+			"request_organization_id": optionalOrganizationIDDataSourceStringAttribute(),
+			"valid":                   computedDataSourceBoolAttribute("Whether the SSH access token is valid."),
+			"sandbox_id":              computedDataSourceStringAttribute("Sandbox ID for the SSH access token."),
+		},
+	}
+}
+
+func (d *SandboxSSHAccessValidationDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	client := configureDataSourceClient(req.ProviderData, &resp.Diagnostics)
+	if client == nil {
+		return
+	}
+	d.client = client
+}
+
+func (d *SandboxSSHAccessValidationDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var config sandboxSSHAccessValidationConfigModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	token := strings.TrimSpace(config.Token.ValueString())
+	if token == "" {
+		resp.Diagnostics.AddError(
+			"Missing Daytona SSH access token",
+			"Configure token with the Daytona SSH access token to validate.",
+		)
+		return
+	}
+
+	request := d.client.api.SandboxAPI.ValidateSshAccess(ctx).Token(token)
+	if organizationID := optionalString(config.RequestOrganizationID); organizationID != nil {
+		request = request.XDaytonaOrganizationID(*organizationID)
+	}
+
+	validation, httpResp, err := request.Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to validate Daytona sandbox SSH access", "validate sandbox SSH access", httpResp, err)
+		return
+	}
+	if validation == nil {
+		resp.Diagnostics.AddError(
+			"Empty Daytona sandbox SSH access validation response",
+			"Daytona returned a successful response without sandbox SSH access validation data.",
+		)
+		return
+	}
+
+	data := sandboxSSHAccessValidationDataSourceModel{
+		ID:                    types.StringValue(validation.SandboxId + ":ssh_access_validation"),
+		Token:                 config.Token,
+		RequestOrganizationID: config.RequestOrganizationID,
+		Valid:                 types.BoolValue(validation.Valid),
+		SandboxID:             types.StringValue(validation.SandboxId),
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
 type SnapshotBuildLogsURLDataSource struct {
 	client *daytonaClient
 }
@@ -430,6 +832,14 @@ func (d *SnapshotBuildLogsURLDataSource) Read(ctx context.Context, req datasourc
 func requiredDataSourceStringAttribute(description string) schema.StringAttribute {
 	return schema.StringAttribute{
 		Required:            true,
+		MarkdownDescription: description,
+	}
+}
+
+func requiredSensitiveDataSourceStringAttribute(description string) schema.StringAttribute {
+	return schema.StringAttribute{
+		Required:            true,
+		Sensitive:           true,
 		MarkdownDescription: description,
 	}
 }
