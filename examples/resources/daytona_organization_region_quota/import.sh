@@ -1,0 +1,1 @@
+terraform import daytona_organization_region_quota.example organization-id:region-id:container

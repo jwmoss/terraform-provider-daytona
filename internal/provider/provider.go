@@ -157,6 +157,7 @@ func (p *DaytonaProvider) Resources(ctx context.Context) []func() resource.Resou
 		NewOrganizationInvitationResource,
 		NewOrganizationMemberAccessResource,
 		NewOrganizationOtelConfigResource,
+		NewOrganizationRegionQuotaResource,
 		NewOrganizationRoleResource,
 		NewRegionResource,
 		NewRunnerResource,
