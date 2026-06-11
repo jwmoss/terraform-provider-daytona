@@ -10,7 +10,7 @@ import (
 )
 
 func TestAccHealthDataSource_basic(t *testing.T) {
-	testAccPreCheck(t)
+	testAccPreCheckHealthCheckAPIKey(t)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,

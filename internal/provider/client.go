@@ -20,7 +20,7 @@ type daytonaClient struct {
 	organizationID string
 }
 
-func newDaytonaClient(apiURL, apiKey, organizationID, version string) *daytonaClient {
+func newDaytonaClient(apiURL, authToken, organizationID, version string) *daytonaClient {
 	apiURL = strings.TrimRight(strings.TrimSpace(apiURL), "/")
 
 	cfg := apiclient.NewConfiguration()
@@ -31,7 +31,7 @@ func newDaytonaClient(apiURL, apiKey, organizationID, version string) *daytonaCl
 		},
 	}
 	cfg.UserAgent = fmt.Sprintf("terraform-provider-daytona/%s", version)
-	cfg.AddDefaultHeader("Authorization", "Bearer "+apiKey)
+	cfg.AddDefaultHeader("Authorization", "Bearer "+authToken)
 
 	if strings.TrimSpace(organizationID) != "" {
 		cfg.AddDefaultHeader(organizationHeader, strings.TrimSpace(organizationID))

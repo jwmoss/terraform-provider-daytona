@@ -10,7 +10,7 @@ import (
 )
 
 func TestAccCurrentAPIKeyDataSource_basic(t *testing.T) {
-	testAccPreCheck(t)
+	testAccPreCheckAPIKey(t)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
