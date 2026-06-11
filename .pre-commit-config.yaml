@@ -1,0 +1,43 @@
+# Pre-commit hooks for local provider validation.
+# Install with `prek install`; run manually with `prek run --all-files`.
+repos:
+  - repo: builtin
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        entry: make fmt
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: generate
+        name: generate docs
+        entry: sh -c 'make generate && git diff --compact-summary --exit-code -- docs examples'
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: lint
+        name: lint
+        entry: make lint
+        language: system
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+
+      - id: test
+        name: test
+        entry: make test
+        language: system
+        pass_filenames: false
+        always_run: true
+        require_serial: true

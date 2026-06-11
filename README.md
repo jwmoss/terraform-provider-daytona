@@ -146,6 +146,13 @@ Run the local test suite:
 go test ./...
 ```
 
+Install and run local hooks:
+
+```shell
+prek install
+prek run --all-files
+```
+
 Run API-key live acceptance tests:
 
 ```shell
