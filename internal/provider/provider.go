@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/action"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -20,6 +21,7 @@ const defaultAPIURL = "https://app.daytona.io/api"
 
 // Ensure DaytonaProvider satisfies provider.Provider.
 var _ provider.Provider = &DaytonaProvider{}
+var _ provider.ProviderWithActions = &DaytonaProvider{}
 
 // DaytonaProvider defines the provider implementation.
 type DaytonaProvider struct {
@@ -98,8 +100,16 @@ func (p *DaytonaProvider) Configure(ctx context.Context, req provider.ConfigureR
 	}
 
 	client := newDaytonaClient(apiURL, apiKey, organizationID, p.version)
+	resp.ActionData = client
 	resp.DataSourceData = client
 	resp.ResourceData = client
+}
+
+func (p *DaytonaProvider) Actions(ctx context.Context) []func() action.Action {
+	return []func() action.Action{
+		NewSnapshotActivateAction,
+		NewSnapshotDeactivateAction,
+	}
 }
 
 func (p *DaytonaProvider) Resources(ctx context.Context) []func() resource.Resource {

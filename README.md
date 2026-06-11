@@ -19,6 +19,9 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_sandbox`
   - `daytona_snapshot`
   - `daytona_volume`
+- Actions:
+  - `daytona_activate_snapshot`
+  - `daytona_deactivate_snapshot`
 - Data sources:
   - `daytona_account_providers`
   - `daytona_api_key`
@@ -121,7 +124,7 @@ export DAYTONA_API_URL="https://app.daytona.io/api"
 Requirements:
 
 - Go 1.25 or newer
-- Terraform 1.0 or newer
+- Terraform 1.0 or newer; provider-defined actions require Terraform 1.14 or newer
 
 Run the local test suite:
 
