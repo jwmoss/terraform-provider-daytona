@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	apiclient "github.com/daytonaio/daytona/libs/api-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -28,19 +29,22 @@ type RegionResource struct {
 }
 
 type regionResourceModel struct {
-	ID                      types.String `tfsdk:"id"`
-	Name                    types.String `tfsdk:"name"`
-	OrganizationID          types.String `tfsdk:"organization_id"`
-	RegionType              types.String `tfsdk:"region_type"`
-	ProxyURL                types.String `tfsdk:"proxy_url"`
-	SSHGatewayURL           types.String `tfsdk:"ssh_gateway_url"`
-	SnapshotManagerURL      types.String `tfsdk:"snapshot_manager_url"`
-	ProxyAPIKey             types.String `tfsdk:"proxy_api_key"`
-	SSHGatewayAPIKey        types.String `tfsdk:"ssh_gateway_api_key"`
-	SnapshotManagerUsername types.String `tfsdk:"snapshot_manager_username"`
-	SnapshotManagerPassword types.String `tfsdk:"snapshot_manager_password"`
-	CreatedAt               types.String `tfsdk:"created_at"`
-	UpdatedAt               types.String `tfsdk:"updated_at"`
+	ID                        types.String `tfsdk:"id"`
+	Name                      types.String `tfsdk:"name"`
+	OrganizationID            types.String `tfsdk:"organization_id"`
+	RegionType                types.String `tfsdk:"region_type"`
+	ProxyURL                  types.String `tfsdk:"proxy_url"`
+	SSHGatewayURL             types.String `tfsdk:"ssh_gateway_url"`
+	SnapshotManagerURL        types.String `tfsdk:"snapshot_manager_url"`
+	ProxyAPIKey               types.String `tfsdk:"proxy_api_key"`
+	SSHGatewayAPIKey          types.String `tfsdk:"ssh_gateway_api_key"`
+	SnapshotManagerUsername   types.String `tfsdk:"snapshot_manager_username"`
+	SnapshotManagerPassword   types.String `tfsdk:"snapshot_manager_password"`
+	ProxyAPIKeyRotationID     types.String `tfsdk:"proxy_api_key_rotation_id"`
+	SSHGatewayRotationID      types.String `tfsdk:"ssh_gateway_api_key_rotation_id"`
+	SnapshotManagerRotationID types.String `tfsdk:"snapshot_manager_credentials_rotation_id"`
+	CreatedAt                 types.String `tfsdk:"created_at"`
+	UpdatedAt                 types.String `tfsdk:"updated_at"`
 }
 
 func (r *RegionResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -65,11 +69,23 @@ func (r *RegionResource) Schema(ctx context.Context, req resource.SchemaRequest,
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"organization_id":           computedStringAttribute("Daytona organization ID that owns the region."),
-			"region_type":               computedStringAttribute("Region type."),
-			"proxy_url":                 optionalStringAttribute("Proxy URL for the region."),
-			"ssh_gateway_url":           optionalStringAttribute("SSH gateway URL for the region."),
-			"snapshot_manager_url":      optionalStringAttribute("Snapshot manager URL for the region."),
+			"organization_id":      computedStringAttribute("Daytona organization ID that owns the region."),
+			"region_type":          computedStringAttribute("Region type."),
+			"proxy_url":            optionalStringAttribute("Proxy URL for the region."),
+			"ssh_gateway_url":      optionalStringAttribute("SSH gateway URL for the region."),
+			"snapshot_manager_url": optionalStringAttribute("Snapshot manager URL for the region."),
+			"proxy_api_key_rotation_id": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Arbitrary rotation trigger for the region proxy API key. Change this value to regenerate the proxy API key and store the returned key in `proxy_api_key`.",
+			},
+			"ssh_gateway_api_key_rotation_id": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Arbitrary rotation trigger for the region SSH gateway API key. Change this value to regenerate the SSH gateway API key and store the returned key in `ssh_gateway_api_key`.",
+			},
+			"snapshot_manager_credentials_rotation_id": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Arbitrary rotation trigger for the region snapshot manager credentials. Change this value to regenerate the snapshot manager username and password.",
+			},
 			"proxy_api_key":             sensitiveComputedStringAttribute("Proxy API key returned when the region is created."),
 			"ssh_gateway_api_key":       sensitiveComputedStringAttribute("SSH gateway API key returned when the region is created."),
 			"snapshot_manager_username": sensitiveComputedStringAttribute("Snapshot manager username returned when the region is created."),
@@ -175,11 +191,18 @@ func (r *RegionResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 func (r *RegionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data regionResourceModel
+	var prior regionResourceModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	data.ProxyAPIKey = prior.ProxyAPIKey
+	data.SSHGatewayAPIKey = prior.SSHGatewayAPIKey
+	data.SnapshotManagerUsername = prior.SnapshotManagerUsername
+	data.SnapshotManagerPassword = prior.SnapshotManagerPassword
 
 	updateRegion := apiclient.NewUpdateRegion()
 	if value := optionalString(data.ProxyURL); value != nil {
@@ -207,6 +230,13 @@ func (r *RegionResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	data = flattenRegion(region, data)
+
+	httpResp, err = r.applyRegionCredentialRotations(ctx, data.ID.ValueString(), data, prior, &data)
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to rotate Daytona region credentials", "rotate region credentials", httpResp, err)
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -286,4 +316,57 @@ func flattenRegion(region *apiclient.Region, prior regionResourceModel) regionRe
 	}
 
 	return prior
+}
+
+func (r *RegionResource) applyRegionCredentialRotations(ctx context.Context, regionID string, planned, prior regionResourceModel, data *regionResourceModel) (*http.Response, error) {
+	var httpResp *http.Response
+
+	if rotationIDChanged(planned.ProxyAPIKeyRotationID, prior.ProxyAPIKeyRotationID) {
+		rotated, resp, err := r.client.api.OrganizationsAPI.RegenerateProxyApiKey(ctx, regionID).Execute()
+		httpResp = resp
+		if err != nil {
+			return httpResp, err
+		}
+		if rotated != nil {
+			data.ProxyAPIKey = types.StringValue(rotated.ApiKey)
+		}
+	}
+
+	if rotationIDChanged(planned.SSHGatewayRotationID, prior.SSHGatewayRotationID) {
+		rotated, resp, err := r.client.api.OrganizationsAPI.RegenerateSshGatewayApiKey(ctx, regionID).Execute()
+		httpResp = resp
+		if err != nil {
+			return httpResp, err
+		}
+		if rotated != nil {
+			data.SSHGatewayAPIKey = types.StringValue(rotated.ApiKey)
+		}
+	}
+
+	if rotationIDChanged(planned.SnapshotManagerRotationID, prior.SnapshotManagerRotationID) {
+		rotated, resp, err := r.client.api.OrganizationsAPI.RegenerateSnapshotManagerCredentials(ctx, regionID).Execute()
+		httpResp = resp
+		if err != nil {
+			return httpResp, err
+		}
+		if rotated != nil {
+			data.SnapshotManagerUsername = types.StringValue(rotated.Username)
+			data.SnapshotManagerPassword = types.StringValue(rotated.Password)
+		}
+	}
+
+	return httpResp, nil
+}
+
+func rotationIDChanged(planned, prior types.String) bool {
+	if planned.IsUnknown() {
+		return false
+	}
+	if planned.IsNull() && prior.IsNull() {
+		return false
+	}
+	if planned.IsNull() != prior.IsNull() {
+		return true
+	}
+	return planned.ValueString() != prior.ValueString()
 }

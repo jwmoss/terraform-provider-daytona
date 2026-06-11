@@ -27,8 +27,11 @@ resource "daytona_region" "example" {
 
 ### Optional
 
+- `proxy_api_key_rotation_id` (String) Arbitrary rotation trigger for the region proxy API key. Change this value to regenerate the proxy API key and store the returned key in `proxy_api_key`.
 - `proxy_url` (String) Proxy URL for the region.
+- `snapshot_manager_credentials_rotation_id` (String) Arbitrary rotation trigger for the region snapshot manager credentials. Change this value to regenerate the snapshot manager username and password.
 - `snapshot_manager_url` (String) Snapshot manager URL for the region.
+- `ssh_gateway_api_key_rotation_id` (String) Arbitrary rotation trigger for the region SSH gateway API key. Change this value to regenerate the SSH gateway API key and store the returned key in `ssh_gateway_api_key`.
 - `ssh_gateway_url` (String) SSH gateway URL for the region.
 
 ### Read-Only
