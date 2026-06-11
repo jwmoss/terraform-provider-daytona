@@ -4,7 +4,7 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
 
 ## Features
 
-- Provider configuration through `DAYTONA_API_KEY`, `DAYTONA_API_URL`, and `DAYTONA_ORGANIZATION_ID`
+- Provider configuration through `DAYTONA_API_KEY`, `DAYTONA_ACCESS_TOKEN`, `DAYTONA_API_URL`, and `DAYTONA_ORGANIZATION_ID`
 - Daytona managed-service default API URL: `https://app.daytona.io/api`
 - Resources:
   - `daytona_api_key`
@@ -127,8 +127,11 @@ Set credentials with environment variables:
 
 ```shell
 export DAYTONA_API_KEY="dtn_..."
+export DAYTONA_ACCESS_TOKEN="eyJ..."
 export DAYTONA_API_URL="https://app.daytona.io/api"
 ```
+
+Daytona API keys work for API-key-enabled routes such as current API-key lookup and volume management. Daytona org/user provisioning and discovery routes are JWT-only in the current Daytona API; set `DAYTONA_ACCESS_TOKEN` and `DAYTONA_ORGANIZATION_ID` for those routes. When both token types are set, `DAYTONA_ACCESS_TOKEN` takes precedence.
 
 ## Development
 
@@ -143,20 +146,28 @@ Run the local test suite:
 go test ./...
 ```
 
-Run read-only live acceptance tests:
+Run API-key live acceptance tests:
 
 ```shell
 TF_ACC=1 DAYTONA_API_KEY="dtn_..." \
-  go test ./internal/provider -run 'TestAcc(CurrentAPIKeyDataSource_basic|CollectionDataSources_basic)' -v
+  go test ./internal/provider -run 'TestAcc(CurrentAPIKeyDataSource|VolumeResource)_basic' -v
 ```
 
-Run the full acceptance suite:
+Run JWT-only org/user acceptance tests:
 
 ```shell
-TF_ACC=1 DAYTONA_API_KEY="dtn_..." go test ./internal/provider -v
+TF_ACC=1 DAYTONA_ACCESS_TOKEN="eyJ..." DAYTONA_ORGANIZATION_ID="org-..." \
+  go test ./internal/provider -run 'TestAcc(CollectionDataSources|LookupDataSources|OperationalDataSources)_basic' -v
 ```
 
-Acceptance tests create real Daytona resources. The current live test key can read Daytona metadata, but create/delete resource tests are blocked until the Daytona organization has a payment method; the API currently returns `Organization is suspended: Payment method required` for volume creation.
+Run the Daytona readiness acceptance test with a health-check API key:
+
+```shell
+TF_ACC=1 DAYTONA_HEALTH_CHECK_API_KEY="dtn_..." \
+  go test ./internal/provider -run TestAccHealthDataSource_basic -v
+```
+
+Acceptance tests create real Daytona resources. Volume create/delete was verified live after adding lifecycle polling for Daytona's asynchronous volume states. The full org/user suite requires an OAuth access token because the current Daytona API rejects normal API keys on JWT-only routes.
 
 Generate provider documentation:
 

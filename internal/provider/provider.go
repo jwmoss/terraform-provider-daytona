@@ -34,6 +34,7 @@ type DaytonaProvider struct {
 // DaytonaProviderModel describes the provider configuration.
 type DaytonaProviderModel struct {
 	APIKey         types.String `tfsdk:"api_key"`
+	AccessToken    types.String `tfsdk:"access_token"`
 	APIURL         types.String `tfsdk:"api_url"`
 	OrganizationID types.String `tfsdk:"organization_id"`
 }
@@ -48,7 +49,12 @@ func (p *DaytonaProvider) Schema(ctx context.Context, req provider.SchemaRequest
 		MarkdownDescription: "Terraform provider for managing Daytona sandboxes and supporting infrastructure.",
 		Attributes: map[string]schema.Attribute{
 			"api_key": schema.StringAttribute{
-				MarkdownDescription: "Daytona API key. May also be set with the `DAYTONA_API_KEY` environment variable.",
+				MarkdownDescription: "Daytona API key. May also be set with the `DAYTONA_API_KEY` environment variable. Daytona API keys only work with API-key-enabled routes; use `access_token` for JWT-only Daytona provisioning routes.",
+				Optional:            true,
+				Sensitive:           true,
+			},
+			"access_token": schema.StringAttribute{
+				MarkdownDescription: "Daytona OAuth access token for JWT-only Daytona API routes. May also be set with the `DAYTONA_ACCESS_TOKEN` environment variable. When configured, this token takes precedence over `api_key` for the provider's bearer token.",
 				Optional:            true,
 				Sensitive:           true,
 			},
@@ -78,10 +84,20 @@ func (p *DaytonaProvider) Configure(ctx context.Context, req provider.ConfigureR
 		apiKey = data.APIKey.ValueString()
 	}
 
-	if strings.TrimSpace(apiKey) == "" {
+	accessToken := os.Getenv("DAYTONA_ACCESS_TOKEN")
+	if !data.AccessToken.IsNull() {
+		accessToken = data.AccessToken.ValueString()
+	}
+
+	authToken := strings.TrimSpace(apiKey)
+	if strings.TrimSpace(accessToken) != "" {
+		authToken = strings.TrimSpace(accessToken)
+	}
+
+	if authToken == "" {
 		resp.Diagnostics.AddError(
-			"Missing Daytona API key",
-			"Set the api_key provider attribute or the DAYTONA_API_KEY environment variable.",
+			"Missing Daytona authentication token",
+			"Set access_token or DAYTONA_ACCESS_TOKEN for JWT-only Daytona API routes, or set api_key or DAYTONA_API_KEY for API-key-enabled routes.",
 		)
 		return
 	}
@@ -99,7 +115,7 @@ func (p *DaytonaProvider) Configure(ctx context.Context, req provider.ConfigureR
 		organizationID = data.OrganizationID.ValueString()
 	}
 
-	client := newDaytonaClient(apiURL, apiKey, organizationID, p.version)
+	client := newDaytonaClient(apiURL, authToken, organizationID, p.version)
 	resp.ActionData = client
 	resp.DataSourceData = client
 	resp.ResourceData = client

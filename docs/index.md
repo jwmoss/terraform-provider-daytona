@@ -23,6 +23,7 @@ provider "daytona" {
 
 ### Optional
 
-- `api_key` (String, Sensitive) Daytona API key. May also be set with the `DAYTONA_API_KEY` environment variable.
+- `access_token` (String, Sensitive) Daytona OAuth access token for JWT-only Daytona API routes. May also be set with the `DAYTONA_ACCESS_TOKEN` environment variable. When configured, this token takes precedence over `api_key` for the provider's bearer token.
+- `api_key` (String, Sensitive) Daytona API key. May also be set with the `DAYTONA_API_KEY` environment variable. Daytona API keys only work with API-key-enabled routes; use `access_token` for JWT-only Daytona provisioning routes.
 - `api_url` (String) Daytona API base URL. May also be set with `DAYTONA_API_URL`. Defaults to `https://app.daytona.io/api`.
 - `organization_id` (String) Optional Daytona organization ID to send as `X-Daytona-Organization-ID`. May also be set with `DAYTONA_ORGANIZATION_ID`.

@@ -6,6 +6,8 @@ package provider
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"time"
 
 	apiclient "github.com/daytonaio/daytona/libs/api-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -18,6 +20,10 @@ import (
 
 var _ resource.Resource = &VolumeResource{}
 var _ resource.ResourceWithImportState = &VolumeResource{}
+
+const volumeOperationTimeout = 5 * time.Minute
+
+var volumePollInterval = 2 * time.Second
 
 func NewVolumeResource() resource.Resource {
 	return &VolumeResource{}
@@ -121,6 +127,19 @@ func (r *VolumeResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	volume, httpResp, err = r.waitForVolumeDeletable(ctx, volume.Id)
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to wait for Daytona volume creation", "wait for volume creation", httpResp, err)
+		return
+	}
+	if volume.State == apiclient.VOLUMESTATE_ERROR {
+		resp.Diagnostics.AddError(
+			"Daytona volume creation failed",
+			fmt.Sprintf("Volume %q entered error state: %s", volume.Id, volume.GetErrorReason()),
+		)
+		return
+	}
+
 	data = flattenVolume(volume, data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -140,6 +159,10 @@ func (r *VolumeResource) Read(ctx context.Context, req resource.ReadRequest, res
 	}
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to read Daytona volume", "read volume", httpResp, err)
+		return
+	}
+	if volume != nil && volume.State == apiclient.VOLUMESTATE_DELETED {
+		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -162,12 +185,27 @@ func (r *VolumeResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	httpResp, err := r.client.api.VolumesAPI.DeleteVolume(ctx, data.ID.ValueString()).Execute()
+	volume, httpResp, err := r.waitForVolumeDeletable(ctx, data.ID.ValueString())
+	if isNotFound(httpResp) || (volume != nil && volume.State == apiclient.VOLUMESTATE_DELETED) {
+		return
+	}
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to wait for Daytona volume deletion", "wait for volume deletion", httpResp, err)
+		return
+	}
+
+	httpResp, err = r.client.api.VolumesAPI.DeleteVolume(ctx, data.ID.ValueString()).Execute()
 	if isNotFound(httpResp) {
 		return
 	}
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to delete Daytona volume", "delete volume", httpResp, err)
+		return
+	}
+
+	httpResp, err = r.waitForVolumeDeleted(ctx, data.ID.ValueString())
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to wait for Daytona volume deletion", "wait for volume deletion", httpResp, err)
 		return
 	}
 }
@@ -201,4 +239,60 @@ func flattenVolume(volume *apiclient.VolumeDto, prior volumeResourceModel) volum
 	}
 
 	return prior
+}
+
+func (r *VolumeResource) waitForVolumeDeletable(ctx context.Context, volumeID string) (*apiclient.VolumeDto, *http.Response, error) {
+	return r.waitForVolume(ctx, volumeID, func(volume *apiclient.VolumeDto) (bool, error) {
+		switch volume.State {
+		case apiclient.VOLUMESTATE_READY, apiclient.VOLUMESTATE_ERROR, apiclient.VOLUMESTATE_DELETED:
+			return true, nil
+		default:
+			return false, nil
+		}
+	})
+}
+
+func (r *VolumeResource) waitForVolumeDeleted(ctx context.Context, volumeID string) (*http.Response, error) {
+	_, httpResp, err := r.waitForVolume(ctx, volumeID, func(volume *apiclient.VolumeDto) (bool, error) {
+		switch volume.State {
+		case apiclient.VOLUMESTATE_DELETED:
+			return true, nil
+		case apiclient.VOLUMESTATE_ERROR:
+			return false, fmt.Errorf("volume %q entered error state while deleting: %s", volumeID, volume.GetErrorReason())
+		default:
+			return false, nil
+		}
+	})
+	if isNotFound(httpResp) {
+		return httpResp, nil
+	}
+	return httpResp, err
+}
+
+func (r *VolumeResource) waitForVolume(ctx context.Context, volumeID string, done func(*apiclient.VolumeDto) (bool, error)) (*apiclient.VolumeDto, *http.Response, error) {
+	deadline := time.Now().Add(volumeOperationTimeout)
+
+	for {
+		volume, httpResp, err := r.client.api.VolumesAPI.GetVolume(ctx, volumeID).Execute()
+		if err != nil {
+			return volume, httpResp, err
+		}
+		if volume == nil {
+			return nil, httpResp, fmt.Errorf("daytona returned a successful response without volume data for %q", volumeID)
+		}
+
+		ready, err := done(volume)
+		if ready || err != nil {
+			return volume, httpResp, err
+		}
+		if time.Now().After(deadline) {
+			return volume, httpResp, fmt.Errorf("timed out waiting for Daytona volume %q; last state: %s", volumeID, volume.State)
+		}
+
+		select {
+		case <-ctx.Done():
+			return volume, httpResp, ctx.Err()
+		case <-time.After(volumePollInterval):
+		}
+	}
 }

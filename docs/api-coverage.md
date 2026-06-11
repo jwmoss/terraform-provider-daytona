@@ -4,6 +4,8 @@ This provider is audited against Daytona's generated OpenAPI client in `/Users/j
 
 The Terraform surface focuses on durable SaaS infrastructure, read-only discovery, and provider-defined actions where Daytona exposes an explicit operational action. Runtime operations, deprecated toolbox proxy operations, admin-only internals, and endpoints that only validate ephemeral tokens are intentionally excluded unless they map cleanly to Terraform state or Terraform's action model.
 
+The provider accepts either `api_key`/`DAYTONA_API_KEY` or `access_token`/`DAYTONA_ACCESS_TOKEN` as its bearer token. Daytona API keys currently work for API-key-enabled routes such as current API-key lookup and volume management; Daytona org/user provisioning and discovery routes are JWT-only and require an OAuth access token plus `organization_id`/`DAYTONA_ORGANIZATION_ID`.
+
 ## Covered API Groups
 
 | Daytona API area | Terraform coverage |
@@ -46,6 +48,7 @@ The Terraform surface focuses on durable SaaS infrastructure, read-only discover
 
 ## Live Verification Gaps
 
-- `DAYTONA_API_KEY` is not set in the current shell, so read-only live acceptance tests could not be rerun for the latest data sources.
-- Full create/delete acceptance remains blocked by the live organization state: Daytona returns `Organization is suspended: Payment method required` for resource creation.
+- Live API-key acceptance passed for `daytona_current_api_key` and `daytona_volume` create/read/delete after adding polling for Daytona's asynchronous volume states.
+- Org/user discovery and provisioning acceptance tests require `DAYTONA_ACCESS_TOKEN` and `DAYTONA_ORGANIZATION_ID`; the live Daytona API returned `401` for those JWT-only routes when called with a normal Daytona API key.
+- Daytona readiness acceptance requires a `DAYTONA_HEALTH_CHECK_API_KEY`; the live Daytona API returned `403` for `/api/health/ready` when called with a normal user API key.
 - Runner endpoints remain implemented from OpenAPI but require Daytona-side verification because the managed route returned `404 Cannot GET /api/runners` for the current account/key.

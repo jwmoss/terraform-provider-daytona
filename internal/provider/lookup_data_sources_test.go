@@ -10,7 +10,7 @@ import (
 )
 
 func TestAccLookupDataSources_basic(t *testing.T) {
-	testAccPreCheck(t)
+	testAccPreCheckAccessToken(t)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -18,11 +18,6 @@ func TestAccLookupDataSources_basic(t *testing.T) {
 			{
 				Config: `
 provider "daytona" {}
-
-data "daytona_current_api_key" "current" {}
-data "daytona_api_key" "current" {
-  name = data.daytona_current_api_key.current.name
-}
 
 data "daytona_organizations" "available" {}
 data "daytona_organization" "selected" {
@@ -46,7 +41,6 @@ data "daytona_organization_member" "selected" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrPair("data.daytona_api_key.current", "name", "data.daytona_current_api_key.current", "name"),
 					resource.TestCheckResourceAttrSet("data.daytona_organization.selected", "name"),
 					resource.TestCheckResourceAttrSet("data.daytona_organization_role.selected", "name"),
 					resource.TestCheckResourceAttrSet("data.daytona_organization_member.selected", "email"),
