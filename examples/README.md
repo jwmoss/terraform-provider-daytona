@@ -8,3 +8,8 @@ The document generation tool looks for files in the following locations by defau
 * **actions/`full action name`/action.tf** example file for the named action page
 * **data-sources/`full data source name`/data-source.tf** example file for the named data source page
 * **resources/`full resource name`/resource.tf** example file for the named data source page
+
+Additional runnable examples live outside the documentation generator paths:
+
+* **modules/daytona-sandbox** reusable module for provisioning a Daytona sandbox and optional persistent volume
+* **github-source-module** root example that consumes the module from this public GitHub repository
