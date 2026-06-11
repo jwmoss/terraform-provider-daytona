@@ -41,6 +41,6 @@ The provider accepts either `api_key`/`DAYTONA_API_KEY` or `access_token`/`DAYTO
 ## Live Verification Gaps
 
 - Live API-key acceptance passed for `daytona_current_api_key` and `daytona_volume` create/read/delete after adding polling for Daytona's asynchronous volume states.
-- Org/user discovery and provisioning acceptance tests require `DAYTONA_ACCESS_TOKEN` and `DAYTONA_ORGANIZATION_ID`; the live Daytona API returned `401` for those JWT-only routes when called with a normal Daytona API key.
+- Org/user discovery and provisioning acceptance tests require `DAYTONA_ACCESS_TOKEN` and `DAYTONA_ORGANIZATION_ID`; the live Daytona API returned `401` for those JWT-only routes when called with a normal Daytona API key. Daytona CLI API-key login also reports that organization commands are unavailable with API-key authentication and require browser/OAuth login.
 - Daytona readiness acceptance requires a `DAYTONA_HEALTH_CHECK_API_KEY`; the live Daytona API returned `403` for `/api/health/ready` when called with a normal user API key.
 - Runner endpoints remain implemented from OpenAPI but require Daytona-side verification because the managed route returned `404 Cannot GET /api/runners` for the current account/key.
