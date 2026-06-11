@@ -130,6 +130,7 @@ func (p *DaytonaProvider) DataSources(ctx context.Context) []func() datasource.D
 		NewDockerRegistriesDataSource,
 		NewDockerRegistryDataSource,
 		NewDockerRegistryPushAccessDataSource,
+		NewHealthDataSource,
 		NewJobDataSource,
 		NewJobsDataSource,
 		NewObjectStoragePushAccessDataSource,
