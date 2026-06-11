@@ -151,6 +151,7 @@ func (p *DaytonaProvider) Actions(ctx context.Context) []func() action.Action {
 
 func (p *DaytonaProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		NewAdminOrganizationRegionQuotaResource,
 		NewAPIKeyResource,
 		NewDockerRegistryResource,
 		NewOrganizationResource,

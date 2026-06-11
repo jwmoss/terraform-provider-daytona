@@ -7,6 +7,7 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
 - Provider configuration through `DAYTONA_API_KEY`, `DAYTONA_ACCESS_TOKEN`, `DAYTONA_API_URL`, and `DAYTONA_ORGANIZATION_ID`
 - Daytona managed-service default API URL: `https://app.daytona.io/api`
 - Resources:
+  - `daytona_admin_organization_region_quota`
   - `daytona_api_key`
   - `daytona_docker_registry`
   - `daytona_organization`
