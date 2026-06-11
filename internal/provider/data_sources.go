@@ -34,6 +34,10 @@ func NewRegionsDataSource() datasource.DataSource {
 	return &collectionDataSource{kind: "regions"}
 }
 
+func NewSharedRegionsDataSource() datasource.DataSource {
+	return &collectionDataSource{kind: "shared_regions"}
+}
+
 func NewRunnersDataSource() datasource.DataSource {
 	return &collectionDataSource{kind: "runners"}
 }
@@ -327,6 +331,26 @@ func (d *collectionDataSource) readItems(ctx context.Context, organizationID typ
 		regions, httpResp, err := d.client.api.OrganizationsAPI.ListAvailableRegions(ctx).Execute()
 		if err != nil {
 			addAPIError(diags, "Unable to list Daytona regions", "list regions", httpResp, err)
+			return nil, err
+		}
+		items := make([]collectionItemModel, 0, len(regions))
+		for _, region := range regions {
+			item := newCollectionItem()
+			item.ID = types.StringValue(region.Id)
+			item.Name = types.StringValue(region.Name)
+			item.Type = types.StringValue(string(region.RegionType))
+			item.CreatedAt = types.StringValue(region.CreatedAt)
+			item.UpdatedAt = types.StringValue(region.UpdatedAt)
+			if value, ok := region.GetOrganizationIdOk(); ok && value != nil {
+				item.OrganizationID = types.StringValue(*value)
+			}
+			items = append(items, item)
+		}
+		return items, nil
+	case "shared_regions":
+		regions, httpResp, err := d.client.api.RegionsAPI.ListSharedRegions(ctx).Execute()
+		if err != nil {
+			addAPIError(diags, "Unable to list Daytona shared regions", "list shared regions", httpResp, err)
 			return nil, err
 		}
 		items := make([]collectionItemModel, 0, len(regions))
