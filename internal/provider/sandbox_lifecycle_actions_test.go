@@ -28,6 +28,7 @@ func TestSandboxLifecycleActionsSchema(t *testing.T) {
 		nameRequired        bool
 		expectIncludeMemory bool
 		expectSkipStart     bool
+		expectForce         bool
 	}{
 		"recover": {
 			factory:          NewSandboxRecoverAction,
@@ -37,6 +38,19 @@ func TestSandboxLifecycleActionsSchema(t *testing.T) {
 		"backup": {
 			factory:          NewSandboxCreateBackupAction,
 			expectedTypeName: "daytona_create_sandbox_backup",
+		},
+		"start": {
+			factory:          NewSandboxStartAction,
+			expectedTypeName: "daytona_start_sandbox",
+		},
+		"stop": {
+			factory:          NewSandboxStopAction,
+			expectedTypeName: "daytona_stop_sandbox",
+			expectForce:      true,
+		},
+		"archive": {
+			factory:          NewSandboxArchiveAction,
+			expectedTypeName: "daytona_archive_sandbox",
 		},
 		"snapshot": {
 			factory:             NewSandboxCreateSnapshotAction,
@@ -126,6 +140,16 @@ func TestSandboxLifecycleActionsSchema(t *testing.T) {
 				}
 			}
 
+			if testCase.expectForce {
+				forceAttr, ok := schemaResp.Schema.Attributes["force"].(actionschema.BoolAttribute)
+				if !ok {
+					t.Fatalf("expected force to be a bool attribute, got %T", schemaResp.Schema.Attributes["force"])
+				}
+				if !forceAttr.Optional {
+					t.Fatal("expected force to be optional")
+				}
+			}
+
 			organizationAttr, ok := schemaResp.Schema.Attributes["organization_id"].(actionschema.StringAttribute)
 			if !ok {
 				t.Fatalf("expected organization_id to be a string attribute, got %T", schemaResp.Schema.Attributes["organization_id"])
@@ -134,6 +158,115 @@ func TestSandboxLifecycleActionsSchema(t *testing.T) {
 				t.Fatal("expected organization_id to be optional")
 			}
 		})
+	}
+}
+
+func TestSandboxStartActionInvoke(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath, gotOrganizationID string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.EscapedPath()
+		gotOrganizationID = r.Header.Get(organizationHeader)
+		writeSandboxActionResponse(t, w)
+	}))
+	defer server.Close()
+
+	actionInstance := NewSandboxStartAction()
+	configureActionClient(t, actionInstance, server.URL)
+
+	config := simpleSandboxActionConfig(t, actionInstance, "sandbox-1", "org-1")
+
+	var invokeResp action.InvokeResponse
+	actionInstance.Invoke(context.Background(), action.InvokeRequest{Config: *config}, &invokeResp)
+	if invokeResp.Diagnostics.HasError() {
+		t.Fatalf("unexpected invoke diagnostics: %s", invokeResp.Diagnostics)
+	}
+
+	if gotMethod != http.MethodPost {
+		t.Fatalf("expected method %s, got %s", http.MethodPost, gotMethod)
+	}
+	if gotPath != "/sandbox/sandbox-1/start" {
+		t.Fatalf("expected path %q, got %q", "/sandbox/sandbox-1/start", gotPath)
+	}
+	if gotOrganizationID != "org-1" {
+		t.Fatalf("expected organization header %q, got %q", "org-1", gotOrganizationID)
+	}
+}
+
+func TestSandboxStopActionInvoke(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath, gotForce, gotOrganizationID string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.EscapedPath()
+		gotForce = r.URL.Query().Get("force")
+		gotOrganizationID = r.Header.Get(organizationHeader)
+		writeSandboxActionResponse(t, w)
+	}))
+	defer server.Close()
+
+	actionInstance := NewSandboxStopAction()
+	configureActionClient(t, actionInstance, server.URL)
+
+	config := stopSandboxActionConfig(t, actionInstance, "sandbox-1", true, "org-1")
+
+	var invokeResp action.InvokeResponse
+	actionInstance.Invoke(context.Background(), action.InvokeRequest{Config: *config}, &invokeResp)
+	if invokeResp.Diagnostics.HasError() {
+		t.Fatalf("unexpected invoke diagnostics: %s", invokeResp.Diagnostics)
+	}
+
+	if gotMethod != http.MethodPost {
+		t.Fatalf("expected method %s, got %s", http.MethodPost, gotMethod)
+	}
+	if gotPath != "/sandbox/sandbox-1/stop" {
+		t.Fatalf("expected path %q, got %q", "/sandbox/sandbox-1/stop", gotPath)
+	}
+	if gotForce != "true" {
+		t.Fatalf("expected force query value %q, got %q", "true", gotForce)
+	}
+	if gotOrganizationID != "org-1" {
+		t.Fatalf("expected organization header %q, got %q", "org-1", gotOrganizationID)
+	}
+}
+
+func TestSandboxArchiveActionInvoke(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath, gotOrganizationID string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.EscapedPath()
+		gotOrganizationID = r.Header.Get(organizationHeader)
+		writeSandboxActionResponse(t, w)
+	}))
+	defer server.Close()
+
+	actionInstance := NewSandboxArchiveAction()
+	configureActionClient(t, actionInstance, server.URL)
+
+	config := simpleSandboxActionConfig(t, actionInstance, "sandbox-1", "org-1")
+
+	var invokeResp action.InvokeResponse
+	actionInstance.Invoke(context.Background(), action.InvokeRequest{Config: *config}, &invokeResp)
+	if invokeResp.Diagnostics.HasError() {
+		t.Fatalf("unexpected invoke diagnostics: %s", invokeResp.Diagnostics)
+	}
+
+	if gotMethod != http.MethodPost {
+		t.Fatalf("expected method %s, got %s", http.MethodPost, gotMethod)
+	}
+	if gotPath != "/sandbox/sandbox-1/archive" {
+		t.Fatalf("expected path %q, got %q", "/sandbox/sandbox-1/archive", gotPath)
+	}
+	if gotOrganizationID != "org-1" {
+		t.Fatalf("expected organization header %q, got %q", "org-1", gotOrganizationID)
 	}
 }
 
@@ -372,6 +505,20 @@ func recoverSandboxActionConfig(t *testing.T, actionInstance action.Action, sand
 	}}, map[string]tftypes.Value{
 		"sandbox_id_or_name": terraformValue(t, types.StringValue(sandboxIDOrName)),
 		"skip_start":         terraformValue(t, types.BoolValue(skipStart)),
+		"organization_id":    terraformValue(t, types.StringValue(organizationID)),
+	})
+}
+
+func stopSandboxActionConfig(t *testing.T, actionInstance action.Action, sandboxIDOrName string, force bool, organizationID string) *tfsdk.Config {
+	t.Helper()
+
+	return newActionConfig(t, actionInstance, tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"sandbox_id_or_name": tftypes.String,
+		"force":              tftypes.Bool,
+		"organization_id":    tftypes.String,
+	}}, map[string]tftypes.Value{
+		"sandbox_id_or_name": terraformValue(t, types.StringValue(sandboxIDOrName)),
+		"force":              terraformValue(t, types.BoolValue(force)),
 		"organization_id":    terraformValue(t, types.StringValue(organizationID)),
 	})
 }
