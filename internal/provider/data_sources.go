@@ -45,6 +45,22 @@ func NewDockerRegistriesDataSource() datasource.DataSource {
 	return &collectionDataSource{kind: "docker_registries"}
 }
 
+func NewOrganizationsDataSource() datasource.DataSource {
+	return &collectionDataSource{kind: "organizations"}
+}
+
+func NewOrganizationRolesDataSource() datasource.DataSource {
+	return &collectionDataSource{kind: "organization_roles"}
+}
+
+func NewOrganizationMembersDataSource() datasource.DataSource {
+	return &collectionDataSource{kind: "organization_members"}
+}
+
+func NewOrganizationInvitationsDataSource() datasource.DataSource {
+	return &collectionDataSource{kind: "organization_invitations"}
+}
+
 type CurrentAPIKeyDataSource struct {
 	client *daytonaClient
 }
@@ -126,26 +142,40 @@ type collectionDataSource struct {
 }
 
 type collectionDataSourceModel struct {
-	ID    types.String          `tfsdk:"id"`
-	Items []collectionItemModel `tfsdk:"items"`
+	ID             types.String          `tfsdk:"id"`
+	OrganizationID types.String          `tfsdk:"organization_id"`
+	Items          []collectionItemModel `tfsdk:"items"`
 }
 
 type collectionItemModel struct {
-	ID             types.String `tfsdk:"id"`
-	Name           types.String `tfsdk:"name"`
-	OrganizationID types.String `tfsdk:"organization_id"`
-	State          types.String `tfsdk:"state"`
-	Type           types.String `tfsdk:"type"`
-	Region         types.String `tfsdk:"region"`
-	RegionID       types.String `tfsdk:"region_id"`
-	RunnerID       types.String `tfsdk:"runner_id"`
-	Target         types.String `tfsdk:"target"`
-	URL            types.String `tfsdk:"url"`
-	Username       types.String `tfsdk:"username"`
-	Project        types.String `tfsdk:"project"`
-	Public         types.Bool   `tfsdk:"public"`
-	CreatedAt      types.String `tfsdk:"created_at"`
-	UpdatedAt      types.String `tfsdk:"updated_at"`
+	ID               types.String `tfsdk:"id"`
+	Name             types.String `tfsdk:"name"`
+	Description      types.String `tfsdk:"description"`
+	Email            types.String `tfsdk:"email"`
+	CreatedBy        types.String `tfsdk:"created_by"`
+	InvitedBy        types.String `tfsdk:"invited_by"`
+	OrganizationID   types.String `tfsdk:"organization_id"`
+	OrganizationName types.String `tfsdk:"organization_name"`
+	DefaultRegionID  types.String `tfsdk:"default_region_id"`
+	State            types.String `tfsdk:"state"`
+	Type             types.String `tfsdk:"type"`
+	Region           types.String `tfsdk:"region"`
+	RegionID         types.String `tfsdk:"region_id"`
+	RunnerID         types.String `tfsdk:"runner_id"`
+	Role             types.String `tfsdk:"role"`
+	AssignedRoleIDs  types.Set    `tfsdk:"assigned_role_ids"`
+	Permissions      types.Set    `tfsdk:"permissions"`
+	Target           types.String `tfsdk:"target"`
+	URL              types.String `tfsdk:"url"`
+	Username         types.String `tfsdk:"username"`
+	Project          types.String `tfsdk:"project"`
+	Public           types.Bool   `tfsdk:"public"`
+	Personal         types.Bool   `tfsdk:"personal"`
+	Suspended        types.Bool   `tfsdk:"suspended"`
+	IsGlobal         types.Bool   `tfsdk:"is_global"`
+	ExpiresAt        types.String `tfsdk:"expires_at"`
+	CreatedAt        types.String `tfsdk:"created_at"`
+	UpdatedAt        types.String `tfsdk:"updated_at"`
 }
 
 func (d *collectionDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -153,34 +183,58 @@ func (d *collectionDataSource) Metadata(ctx context.Context, req datasource.Meta
 }
 
 func (d *collectionDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: fmt.Sprintf("Lists Daytona %s visible to the configured credentials.", d.kind),
-		Attributes: map[string]schema.Attribute{
-			"id": computedDataSourceStringAttribute("Data source identifier."),
-			"items": schema.ListNestedAttribute{
-				Computed:            true,
-				MarkdownDescription: "Returned Daytona objects.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"id":              computedDataSourceStringAttribute("Object ID."),
-						"name":            computedDataSourceStringAttribute("Object name."),
-						"organization_id": computedDataSourceStringAttribute("Owning organization ID."),
-						"state":           computedDataSourceStringAttribute("Object state."),
-						"type":            computedDataSourceStringAttribute("Object type."),
-						"region":          computedDataSourceStringAttribute("Region name."),
-						"region_id":       computedDataSourceStringAttribute("Region ID."),
-						"runner_id":       computedDataSourceStringAttribute("Runner ID."),
-						"target":          computedDataSourceStringAttribute("Target region or environment."),
-						"url":             computedDataSourceStringAttribute("Object URL, when applicable."),
-						"username":        computedDataSourceStringAttribute("Username, when applicable."),
-						"project":         computedDataSourceStringAttribute("Project or namespace, when applicable."),
-						"public":          computedDataSourceBoolAttribute("Whether the object is public, when applicable."),
-						"created_at":      computedDataSourceStringAttribute("Creation timestamp."),
-						"updated_at":      computedDataSourceStringAttribute("Update timestamp."),
-					},
+	attributes := map[string]schema.Attribute{
+		"id": computedDataSourceStringAttribute("Data source identifier."),
+		"items": schema.ListNestedAttribute{
+			Computed:            true,
+			MarkdownDescription: "Returned Daytona objects.",
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"id":                computedDataSourceStringAttribute("Object ID."),
+					"name":              computedDataSourceStringAttribute("Object name."),
+					"description":       computedDataSourceStringAttribute("Object description."),
+					"email":             computedDataSourceStringAttribute("Email address, when applicable."),
+					"created_by":        computedDataSourceStringAttribute("Creator user ID, when applicable."),
+					"invited_by":        computedDataSourceStringAttribute("Inviter email address, when applicable."),
+					"organization_id":   computedDataSourceStringAttribute("Owning organization ID."),
+					"organization_name": computedDataSourceStringAttribute("Owning organization name."),
+					"default_region_id": computedDataSourceStringAttribute("Default organization region ID."),
+					"state":             computedDataSourceStringAttribute("Object state."),
+					"type":              computedDataSourceStringAttribute("Object type."),
+					"region":            computedDataSourceStringAttribute("Region name."),
+					"region_id":         computedDataSourceStringAttribute("Region ID."),
+					"runner_id":         computedDataSourceStringAttribute("Runner ID."),
+					"role":              computedDataSourceStringAttribute("Organization member role."),
+					"assigned_role_ids": computedDataSourceStringSetAttribute("Assigned organization role IDs."),
+					"permissions":       computedDataSourceStringSetAttribute("Assigned permissions."),
+					"target":            computedDataSourceStringAttribute("Target region or environment."),
+					"url":               computedDataSourceStringAttribute("Object URL, when applicable."),
+					"username":          computedDataSourceStringAttribute("Username, when applicable."),
+					"project":           computedDataSourceStringAttribute("Project or namespace, when applicable."),
+					"public":            computedDataSourceBoolAttribute("Whether the object is public, when applicable."),
+					"personal":          computedDataSourceBoolAttribute("Whether the organization is personal."),
+					"suspended":         computedDataSourceBoolAttribute("Whether the organization is suspended."),
+					"is_global":         computedDataSourceBoolAttribute("Whether the role is a global Daytona role."),
+					"expires_at":        computedDataSourceStringAttribute("Expiration timestamp, when applicable."),
+					"created_at":        computedDataSourceStringAttribute("Creation timestamp."),
+					"updated_at":        computedDataSourceStringAttribute("Update timestamp."),
 				},
 			},
 		},
+	}
+
+	if d.requiresOrganizationID() {
+		attributes["organization_id"] = schema.StringAttribute{
+			Required:            true,
+			MarkdownDescription: "Daytona organization ID to read.",
+		}
+	} else {
+		attributes["organization_id"] = computedDataSourceStringAttribute("Organization ID, when this data source is scoped to one organization.")
+	}
+
+	resp.Schema = schema.Schema{
+		MarkdownDescription: fmt.Sprintf("Lists Daytona %s visible to the configured credentials.", d.kind),
+		Attributes:          attributes,
 	}
 }
 
@@ -193,20 +247,28 @@ func (d *collectionDataSource) Configure(ctx context.Context, req datasource.Con
 }
 
 func (d *collectionDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	items, err := d.readItems(ctx, &resp.Diagnostics)
+	var data collectionDataSourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	items, err := d.readItems(ctx, data.OrganizationID, &resp.Diagnostics)
 	if err != nil {
 		return
 	}
 
-	data := collectionDataSourceModel{
-		ID:    types.StringValue(d.kind),
-		Items: items,
+	data.ID = types.StringValue(d.kind)
+	data.Items = items
+	if !d.requiresOrganizationID() {
+		data.OrganizationID = types.StringNull()
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (d *collectionDataSource) readItems(ctx context.Context, diags *diag.Diagnostics) ([]collectionItemModel, error) {
+func (d *collectionDataSource) readItems(ctx context.Context, organizationID types.String, diags *diag.Diagnostics) ([]collectionItemModel, error) {
 	switch d.kind {
 	case "volumes":
 		volumes, httpResp, err := d.client.api.VolumesAPI.ListVolumes(ctx).Execute()
@@ -329,29 +391,136 @@ func (d *collectionDataSource) readItems(ctx context.Context, diags *diag.Diagno
 			items = append(items, item)
 		}
 		return items, nil
+	case "organizations":
+		organizations, httpResp, err := d.client.api.OrganizationsAPI.ListOrganizations(ctx).Execute()
+		if err != nil {
+			addAPIError(diags, "Unable to list Daytona organizations", "list organizations", httpResp, err)
+			return nil, err
+		}
+		items := make([]collectionItemModel, 0, len(organizations))
+		for _, organization := range organizations {
+			item := newCollectionItem()
+			item.ID = types.StringValue(organization.Id)
+			item.Name = types.StringValue(organization.Name)
+			item.CreatedBy = types.StringValue(organization.CreatedBy)
+			item.Personal = types.BoolValue(organization.Personal)
+			item.Suspended = types.BoolValue(organization.Suspended)
+			item.CreatedAt = terraformTimeString(organization.CreatedAt)
+			item.UpdatedAt = terraformTimeString(organization.UpdatedAt)
+			if value, ok := organization.GetDefaultRegionIdOk(); ok && value != nil {
+				item.DefaultRegionID = types.StringValue(*value)
+			}
+			items = append(items, item)
+		}
+		return items, nil
+	case "organization_roles":
+		roles, httpResp, err := d.client.api.OrganizationsAPI.ListOrganizationRoles(ctx, organizationID.ValueString()).Execute()
+		if err != nil {
+			addAPIError(diags, "Unable to list Daytona organization roles", "list organization roles", httpResp, err)
+			return nil, err
+		}
+		items := make([]collectionItemModel, 0, len(roles))
+		for _, role := range roles {
+			item := newCollectionItem()
+			item.ID = types.StringValue(role.Id)
+			item.OrganizationID = organizationID
+			item.Name = types.StringValue(role.Name)
+			item.Description = types.StringValue(role.Description)
+			item.Permissions = setStringValue(ctx, role.Permissions)
+			item.IsGlobal = types.BoolValue(role.IsGlobal)
+			item.CreatedAt = terraformTimeString(role.CreatedAt)
+			item.UpdatedAt = terraformTimeString(role.UpdatedAt)
+			items = append(items, item)
+		}
+		return items, nil
+	case "organization_members":
+		members, httpResp, err := d.client.api.OrganizationsAPI.ListOrganizationMembers(ctx, organizationID.ValueString()).Execute()
+		if err != nil {
+			addAPIError(diags, "Unable to list Daytona organization members", "list organization members", httpResp, err)
+			return nil, err
+		}
+		items := make([]collectionItemModel, 0, len(members))
+		for _, member := range members {
+			item := newCollectionItem()
+			item.ID = types.StringValue(member.UserId)
+			item.OrganizationID = types.StringValue(member.OrganizationId)
+			item.Name = types.StringValue(member.Name)
+			item.Email = types.StringValue(member.Email)
+			item.Role = types.StringValue(member.Role)
+			item.AssignedRoleIDs = setStringValue(ctx, organizationRoleIDs(member.AssignedRoles))
+			item.CreatedAt = terraformTimeString(member.CreatedAt)
+			item.UpdatedAt = terraformTimeString(member.UpdatedAt)
+			items = append(items, item)
+		}
+		return items, nil
+	case "organization_invitations":
+		invitations, httpResp, err := d.client.api.OrganizationsAPI.ListOrganizationInvitations(ctx, organizationID.ValueString()).Execute()
+		if err != nil {
+			addAPIError(diags, "Unable to list Daytona organization invitations", "list organization invitations", httpResp, err)
+			return nil, err
+		}
+		items := make([]collectionItemModel, 0, len(invitations))
+		for _, invitation := range invitations {
+			item := newCollectionItem()
+			item.ID = types.StringValue(invitation.Id)
+			item.OrganizationID = types.StringValue(invitation.OrganizationId)
+			item.OrganizationName = types.StringValue(invitation.OrganizationName)
+			item.Email = types.StringValue(invitation.Email)
+			item.InvitedBy = types.StringValue(invitation.InvitedBy)
+			item.Role = types.StringValue(invitation.Role)
+			item.AssignedRoleIDs = setStringValue(ctx, organizationRoleIDs(invitation.AssignedRoles))
+			item.State = types.StringValue(invitation.Status)
+			item.ExpiresAt = terraformTimeString(invitation.ExpiresAt)
+			item.CreatedAt = terraformTimeString(invitation.CreatedAt)
+			item.UpdatedAt = terraformTimeString(invitation.UpdatedAt)
+			items = append(items, item)
+		}
+		return items, nil
 	default:
 		diags.AddError("Unsupported Daytona data source", fmt.Sprintf("Unsupported data source kind %q.", d.kind))
 		return nil, fmt.Errorf("unsupported data source kind %q", d.kind)
 	}
 }
 
+func (d *collectionDataSource) requiresOrganizationID() bool {
+	switch d.kind {
+	case "organization_roles", "organization_members", "organization_invitations":
+		return true
+	default:
+		return false
+	}
+}
+
 func newCollectionItem() collectionItemModel {
 	return collectionItemModel{
-		ID:             types.StringNull(),
-		Name:           types.StringNull(),
-		OrganizationID: types.StringNull(),
-		State:          types.StringNull(),
-		Type:           types.StringNull(),
-		Region:         types.StringNull(),
-		RegionID:       types.StringNull(),
-		RunnerID:       types.StringNull(),
-		Target:         types.StringNull(),
-		URL:            types.StringNull(),
-		Username:       types.StringNull(),
-		Project:        types.StringNull(),
-		Public:         types.BoolNull(),
-		CreatedAt:      types.StringNull(),
-		UpdatedAt:      types.StringNull(),
+		ID:               types.StringNull(),
+		Name:             types.StringNull(),
+		Description:      types.StringNull(),
+		Email:            types.StringNull(),
+		CreatedBy:        types.StringNull(),
+		InvitedBy:        types.StringNull(),
+		OrganizationID:   types.StringNull(),
+		OrganizationName: types.StringNull(),
+		DefaultRegionID:  types.StringNull(),
+		State:            types.StringNull(),
+		Type:             types.StringNull(),
+		Region:           types.StringNull(),
+		RegionID:         types.StringNull(),
+		RunnerID:         types.StringNull(),
+		Role:             types.StringNull(),
+		AssignedRoleIDs:  types.SetNull(types.StringType),
+		Permissions:      types.SetNull(types.StringType),
+		Target:           types.StringNull(),
+		URL:              types.StringNull(),
+		Username:         types.StringNull(),
+		Project:          types.StringNull(),
+		Public:           types.BoolNull(),
+		Personal:         types.BoolNull(),
+		Suspended:        types.BoolNull(),
+		IsGlobal:         types.BoolNull(),
+		ExpiresAt:        types.StringNull(),
+		CreatedAt:        types.StringNull(),
+		UpdatedAt:        types.StringNull(),
 	}
 }
 

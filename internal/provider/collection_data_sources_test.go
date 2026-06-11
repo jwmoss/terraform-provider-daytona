@@ -21,6 +21,7 @@ provider "daytona" {}
 
 data "daytona_volumes" "test" {}
 data "daytona_regions" "test" {}
+data "daytona_organizations" "test" {}
 data "daytona_sandboxes" "test" {}
 data "daytona_snapshots" "test" {}
 data "daytona_docker_registries" "test" {}
@@ -28,6 +29,7 @@ data "daytona_docker_registries" "test" {}
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.daytona_volumes.test", "id", "volumes"),
 					resource.TestCheckResourceAttr("data.daytona_regions.test", "id", "regions"),
+					resource.TestCheckResourceAttr("data.daytona_organizations.test", "id", "organizations"),
 					resource.TestCheckResourceAttr("data.daytona_sandboxes.test", "id", "sandboxes"),
 					resource.TestCheckResourceAttr("data.daytona_snapshots.test", "id", "snapshots"),
 					resource.TestCheckResourceAttr("data.daytona_docker_registries.test", "id", "docker_registries"),

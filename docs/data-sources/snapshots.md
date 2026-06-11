@@ -23,22 +23,36 @@ data "daytona_snapshots" "example" {}
 
 - `id` (String) Data source identifier.
 - `items` (Attributes List) Returned Daytona objects. (see [below for nested schema](#nestedatt--items))
+- `organization_id` (String) Organization ID, when this data source is scoped to one organization.
 
 <a id="nestedatt--items"></a>
 ### Nested Schema for `items`
 
 Read-Only:
 
+- `assigned_role_ids` (Set of String) Assigned organization role IDs.
 - `created_at` (String) Creation timestamp.
+- `created_by` (String) Creator user ID, when applicable.
+- `default_region_id` (String) Default organization region ID.
+- `description` (String) Object description.
+- `email` (String) Email address, when applicable.
+- `expires_at` (String) Expiration timestamp, when applicable.
 - `id` (String) Object ID.
+- `invited_by` (String) Inviter email address, when applicable.
+- `is_global` (Boolean) Whether the role is a global Daytona role.
 - `name` (String) Object name.
 - `organization_id` (String) Owning organization ID.
+- `organization_name` (String) Owning organization name.
+- `permissions` (Set of String) Assigned permissions.
+- `personal` (Boolean) Whether the organization is personal.
 - `project` (String) Project or namespace, when applicable.
 - `public` (Boolean) Whether the object is public, when applicable.
 - `region` (String) Region name.
 - `region_id` (String) Region ID.
+- `role` (String) Organization member role.
 - `runner_id` (String) Runner ID.
 - `state` (String) Object state.
+- `suspended` (Boolean) Whether the organization is suspended.
 - `target` (String) Target region or environment.
 - `type` (String) Object type.
 - `updated_at` (String) Update timestamp.

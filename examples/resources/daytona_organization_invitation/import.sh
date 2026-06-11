@@ -1,0 +1,1 @@
+terraform import daytona_organization_invitation.example organization-id/invitation-id

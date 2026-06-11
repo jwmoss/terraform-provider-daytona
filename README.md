@@ -9,6 +9,9 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
 - Resources:
   - `daytona_api_key`
   - `daytona_docker_registry`
+  - `daytona_organization`
+  - `daytona_organization_invitation`
+  - `daytona_organization_role`
   - `daytona_region`
   - `daytona_runner`
   - `daytona_sandbox`
@@ -17,6 +20,10 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
 - Data sources:
   - `daytona_current_api_key`
   - `daytona_docker_registries`
+  - `daytona_organization_invitations`
+  - `daytona_organization_members`
+  - `daytona_organization_roles`
+  - `daytona_organizations`
   - `daytona_regions`
   - `daytona_runners`
   - `daytona_sandboxes`
@@ -53,6 +60,8 @@ resource "daytona_sandbox" "agent" {
 }
 
 data "daytona_current_api_key" "current" {}
+
+data "daytona_organizations" "available" {}
 ```
 
 Set credentials with environment variables:
