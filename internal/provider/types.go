@@ -69,3 +69,14 @@ func listStringValue(ctx context.Context, values []string) types.List {
 	}
 	return result
 }
+
+func stringMapValue(ctx context.Context, values map[string]string) types.Map {
+	if values == nil {
+		return types.MapNull(types.StringType)
+	}
+	result, diags := types.MapValueFrom(ctx, types.StringType, values)
+	if diags.HasError() {
+		return types.MapNull(types.StringType)
+	}
+	return result
+}
