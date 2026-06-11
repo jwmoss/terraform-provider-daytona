@@ -367,7 +367,7 @@ func (r *OrganizationRegionQuotaResource) applyOrganizationRegionQuota(ctx conte
 		"/organizations/%s/quota/%s",
 		url.PathEscape(data.OrganizationID.ValueString()),
 		url.PathEscape(data.RegionID.ValueString()),
-	), payload, nil)
+	), payload)
 	if err != nil {
 		addAPIError(diags, "Unable to update Daytona organization region quota", "update organization region quota", httpResp, err)
 		return false

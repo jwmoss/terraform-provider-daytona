@@ -52,7 +52,7 @@ func newDaytonaClient(apiURL, authToken, organizationID, version string) *dayton
 	}
 }
 
-func (c *daytonaClient) patchJSON(ctx context.Context, endpoint string, payload, result any) (*http.Response, error) {
+func (c *daytonaClient) patchJSON(ctx context.Context, endpoint string, payload any) (*http.Response, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -85,13 +85,6 @@ func (c *daytonaClient) patchJSON(ctx context.Context, endpoint string, payload,
 	if resp.StatusCode >= 300 {
 		return resp, rawAPIError{status: resp.Status, body: respBody}
 	}
-	if result == nil || len(strings.TrimSpace(string(respBody))) == 0 {
-		return resp, nil
-	}
-	if err := json.Unmarshal(respBody, result); err != nil {
-		return resp, err
-	}
-
 	return resp, nil
 }
 

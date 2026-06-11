@@ -318,7 +318,6 @@ func (r *RunnerResource) updateRunnerScheduling(ctx context.Context, runnerID st
 		ctx,
 		fmt.Sprintf("/runners/%s/scheduling", url.PathEscape(runnerID)),
 		map[string]bool{"unschedulable": unschedulable},
-		nil,
 	)
 	if err != nil {
 		return httpResp, err
@@ -331,7 +330,6 @@ func (r *RunnerResource) updateRunnerDraining(ctx context.Context, runnerID stri
 		ctx,
 		fmt.Sprintf("/runners/%s/draining", url.PathEscape(runnerID)),
 		map[string]bool{"draining": draining},
-		nil,
 	)
 	if err != nil {
 		return httpResp, err
