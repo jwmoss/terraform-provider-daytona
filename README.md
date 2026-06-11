@@ -234,7 +234,7 @@ TF_ACC=1 DAYTONA_HEALTH_CHECK_API_KEY="dtn_..." \
   go test ./internal/provider -run TestAccHealthDataSource_basic -v
 ```
 
-Acceptance tests create real Daytona resources. Volume create/delete was verified live after adding lifecycle polling for Daytona's asynchronous volume states. The full org/user suite requires an OAuth access token because the current Daytona API rejects normal API keys on JWT-only routes.
+Acceptance tests create real Daytona resources. Volume create/delete was verified live after adding lifecycle polling for Daytona's asynchronous volume states. The full org/user suite requires an OAuth access token because the current Daytona API rejects normal API keys on JWT-only routes; Daytona CLI API-key login has the same organization-command limitation and is not a substitute for browser/OAuth authentication.
 
 Generate provider documentation:
 
