@@ -55,7 +55,10 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - `daytona_region`
   - `daytona_regions`
   - `daytona_runner`
+  - `daytona_runner_for_sandbox`
+  - `daytona_runner_full`
   - `daytona_runners`
+  - `daytona_runners_by_snapshot_ref`
   - `daytona_sandbox_ancestors`
   - `daytona_sandbox_build_logs_url`
   - `daytona_sandbox_forks`
