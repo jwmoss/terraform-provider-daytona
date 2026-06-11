@@ -181,6 +181,18 @@ terraform {
 }
 ```
 
+This repository also includes a reusable module example that can be consumed directly from GitHub:
+
+```terraform
+module "daytona_sandbox" {
+  source = "github.com/jwmoss/terraform-provider-daytona//examples/modules/daytona-sandbox?ref=main"
+
+  name          = "agent-runtime"
+  snapshot      = "daytonaio/sandbox:0.6.0"
+  desired_state = "started"
+}
+```
+
 ## Development
 
 Requirements:

@@ -21,7 +21,7 @@ repos:
 
       - id: generate
         name: generate docs
-        entry: sh -c 'make generate && git diff --compact-summary --exit-code -- docs/actions docs/data-sources docs/resources docs/index.md examples'
+        entry: sh -c 'make generate && git diff --compact-summary --exit-code -- docs/actions docs/data-sources docs/resources docs/index.md examples/actions examples/data-sources examples/provider examples/resources'
         language: system
         pass_filenames: false
         always_run: true
