@@ -69,6 +69,8 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
 
 The provider is backed by Daytona's generated Go OpenAPI client: `github.com/daytonaio/daytona/libs/api-client-go`.
 
+See [docs/api-coverage.md](docs/api-coverage.md) for the current Daytona API coverage matrix and intentionally excluded endpoints.
+
 ## Example
 
 ```terraform
