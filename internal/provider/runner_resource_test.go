@@ -44,8 +44,11 @@ func TestRunnerResourceSchemaOperationalFields(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected draining to be a bool attribute, got %T", schemaResp.Schema.Attributes["draining"])
 	}
-	if !drainingAttr.Optional || !drainingAttr.WriteOnly {
-		t.Fatal("expected draining to be optional and write-only")
+	// draining must be tracked in state: write-only values are never diffed by
+	// Terraform core, so toggling draining alone would produce an empty plan and
+	// the drain request would never be sent.
+	if !drainingAttr.Optional || drainingAttr.WriteOnly {
+		t.Fatal("expected draining to be optional and tracked in state (not write-only)")
 	}
 }
 

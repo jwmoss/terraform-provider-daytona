@@ -186,6 +186,15 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	organizationID := created.Id
+
+	// Persist the organization before follow-up settings calls so a failure cannot orphan it.
+	data = flattenOrganization(created, data)
+	nullUnknownModelValues(ctx, &data)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	if !r.applyMutableOrganizationSettings(ctx, organizationID, data, organizationResourceModel{}, true, &resp.Diagnostics) {
 		return
 	}
@@ -411,8 +420,8 @@ func nullableFloat32FromFloat64(value types.Float64) apiclient.NullableFloat32 {
 	return result
 }
 
-func experimentalConfigPayload(value types.String, diags *diag.Diagnostics) (map[string]interface{}, bool) {
-	var payload map[string]interface{}
+func experimentalConfigPayload(value types.String, diags *diag.Diagnostics) (map[string]any, bool) {
+	var payload map[string]any
 
 	err := json.Unmarshal([]byte(value.ValueString()), &payload)
 	if err != nil {

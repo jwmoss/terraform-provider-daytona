@@ -248,6 +248,15 @@ func (r *SandboxResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 
 	data = flattenSandbox(ctx, sandbox, data)
+
+	// Persist the sandbox before applying the desired state so a failure cannot
+	// orphan a billable sandbox.
+	nullUnknownModelValues(ctx, &data)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	if !data.DesiredState.IsNull() && data.DesiredState.ValueString() != "" {
 		sandbox, httpResp, err = r.applyDesiredState(ctx, data.ID.ValueString(), data.DesiredState.ValueString())
 		if err != nil {
@@ -279,7 +288,21 @@ func (r *SandboxResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 
 	data = flattenSandbox(ctx, sandbox, data)
+	reconcileDesiredState(&data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// reconcileDesiredState maps the actual sandbox state back onto desired_state so
+// out-of-band transitions (for example auto-stop) surface as a plan diff instead
+// of silently drifting. Only terminal states map onto desired_state values.
+func reconcileDesiredState(data *sandboxResourceModel) {
+	if data.DesiredState.IsNull() || data.State.IsNull() {
+		return
+	}
+	switch data.State.ValueString() {
+	case "started", "stopped", "archived":
+		data.DesiredState = types.StringValue(data.State.ValueString())
+	}
 }
 
 func (r *SandboxResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -291,9 +314,6 @@ func (r *SandboxResource) Update(ctx context.Context, req resource.UpdateRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	var sandbox *apiclient.Sandbox
-	needsRead := false
 
 	if !plan.Public.Equal(state.Public) {
 		sandbox, response, err := r.client.api.SandboxAPI.UpdatePublicStatus(ctx, state.ID.ValueString(), plan.Public.ValueBool()).Execute()
@@ -311,6 +331,10 @@ func (r *SandboxResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 		if value := optionalString(plan.NetworkAllowList); value != nil {
 			updateNetworkSettings.SetNetworkAllowList(*value)
+		} else if !plan.NetworkAllowList.Equal(state.NetworkAllowList) {
+			// Removing network_allow_list from config must clear it server-side,
+			// otherwise the old value re-imports on refresh as a perma-diff.
+			updateNetworkSettings.SetNetworkAllowList("")
 		}
 
 		sandbox, response, err := r.client.api.SandboxAPI.UpdateNetworkSettings(ctx, state.ID.ValueString()).
@@ -341,7 +365,6 @@ func (r *SandboxResource) Update(ctx context.Context, req resource.UpdateRequest
 		if labelResponse != nil {
 			plan.Labels = stringMapValue(ctx, labelResponse.Labels)
 		}
-		needsRead = true
 	}
 
 	if !plan.CPU.Equal(state.CPU) || !plan.Memory.Equal(state.Memory) || !plan.Disk.Equal(state.Disk) {
@@ -419,14 +442,12 @@ func (r *SandboxResource) Update(ctx context.Context, req resource.UpdateRequest
 		plan = flattenSandbox(ctx, sandbox, plan)
 	}
 
-	if sandbox == nil || needsRead {
-		current, response, err := r.client.api.SandboxAPI.GetSandbox(ctx, state.ID.ValueString()).Execute()
-		if err != nil {
-			addAPIError(&resp.Diagnostics, "Unable to read Daytona sandbox", "read sandbox", response, err)
-			return
-		}
-		plan = flattenSandbox(ctx, current, plan)
+	current, response, err := r.client.api.SandboxAPI.GetSandbox(ctx, state.ID.ValueString()).Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to read Daytona sandbox", "read sandbox", response, err)
+		return
 	}
+	plan = flattenSandbox(ctx, current, plan)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -563,7 +584,7 @@ func flattenSandbox(ctx context.Context, sandbox *apiclient.Sandbox, prior sandb
 	} else if prior.Snapshot.IsUnknown() {
 		prior.Snapshot = types.StringNull()
 	}
-	if sandbox.NetworkAllowList != nil {
+	if sandbox.NetworkAllowList != nil && *sandbox.NetworkAllowList != "" {
 		prior.NetworkAllowList = types.StringValue(*sandbox.NetworkAllowList)
 	} else {
 		prior.NetworkAllowList = types.StringNull()
@@ -603,10 +624,20 @@ func flattenSandbox(ctx context.Context, sandbox *apiclient.Sandbox, prior sandb
 		prior.AutoDeleteInterval = types.Int64Value(int64(*sandbox.AutoDeleteInterval))
 	}
 
-	env, _ := types.MapValueFrom(ctx, types.StringType, sandbox.Env)
-	prior.Env = env
-	labels, _ := types.MapValueFrom(ctx, types.StringType, sandbox.Labels)
-	prior.Labels = labels
+	// env is intentionally not refreshed from the API: it is Sensitive, not
+	// Computed, and marked RequiresReplace, so any server-side normalization
+	// (masked secrets, injected platform variables) would either fail the apply
+	// with an inconsistent result or plan a destroy/recreate of the sandbox.
+	// The configured value is authoritative.
+	if prior.Env.IsUnknown() {
+		prior.Env = types.MapNull(types.StringType)
+	}
+	// Keep labels null when they are unconfigured and the API returns none, so an
+	// echoed empty map cannot produce an inconsistent result after apply.
+	if len(sandbox.Labels) > 0 || !prior.Labels.IsNull() {
+		labels, _ := types.MapValueFrom(ctx, types.StringType, sandbox.Labels)
+		prior.Labels = labels
+	}
 
 	return prior
 }

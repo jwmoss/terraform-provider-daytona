@@ -131,12 +131,16 @@ func (r *OrganizationMemberAccessResource) Read(ctx context.Context, req resourc
 	}
 
 	member, httpResp, err := r.findMember(ctx, data.OrganizationID.ValueString(), data.UserID.ValueString())
-	if isNotFound(httpResp) || member == nil {
+	if isNotFound(httpResp) {
 		resp.State.RemoveResource(ctx)
 		return
 	}
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to read Daytona organization member access", "read organization member access", httpResp, err)
+		return
+	}
+	if member == nil {
+		resp.State.RemoveResource(ctx)
 		return
 	}
 

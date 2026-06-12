@@ -235,8 +235,11 @@ func flattenAPIKeyList(apiKey *apiclient.ApiKeyList, prior apiKeyResourceModel) 
 
 	prior.ID = types.StringValue(apiKey.Name)
 	prior.Name = types.StringValue(apiKey.Name)
-	if prior.Value.IsNull() || prior.Value.IsUnknown() {
-		prior.Value = types.StringValue(apiKey.Value)
+	// The list endpoint returns a masked key value; the real value is only
+	// available at create time. Keep the stored value, or null after import,
+	// rather than storing a non-functional masked string.
+	if prior.Value.IsUnknown() {
+		prior.Value = types.StringNull()
 	}
 	prior.CreatedAt = types.StringValue(apiKey.CreatedAt.Format(time.RFC3339))
 	prior.UserID = types.StringValue(apiKey.UserId)

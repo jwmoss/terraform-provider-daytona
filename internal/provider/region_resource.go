@@ -231,9 +231,25 @@ func (r *RegionResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 	data = flattenRegion(region, data)
 
-	httpResp, err = r.applyRegionCredentialRotations(ctx, data.ID.ValueString(), data, prior, &data)
+	// Rotation IDs start at their prior values and advance one at a time as each
+	// rotation succeeds and persists, so a partial failure cannot lose a freshly
+	// regenerated credential or skip a pending rotation on the next apply.
+	planned := data
+	data.ProxyAPIKeyRotationID = prior.ProxyAPIKeyRotationID
+	data.SSHGatewayRotationID = prior.SSHGatewayRotationID
+	data.SnapshotManagerRotationID = prior.SnapshotManagerRotationID
+
+	persist := func() bool {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+		return !resp.Diagnostics.HasError()
+	}
+
+	httpResp, err = r.applyRegionCredentialRotations(ctx, planned, prior, &data, persist)
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to rotate Daytona region credentials", "rotate region credentials", httpResp, err)
+		return
+	}
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -318,8 +334,9 @@ func flattenRegion(region *apiclient.Region, prior regionResourceModel) regionRe
 	return prior
 }
 
-func (r *RegionResource) applyRegionCredentialRotations(ctx context.Context, regionID string, planned, prior regionResourceModel, data *regionResourceModel) (*http.Response, error) {
+func (r *RegionResource) applyRegionCredentialRotations(ctx context.Context, planned, prior regionResourceModel, data *regionResourceModel, persist func() bool) (*http.Response, error) {
 	var httpResp *http.Response
+	regionID := planned.ID.ValueString()
 
 	if rotationIDChanged(planned.ProxyAPIKeyRotationID, prior.ProxyAPIKeyRotationID) {
 		rotated, resp, err := r.client.api.OrganizationsAPI.RegenerateProxyApiKey(ctx, regionID).Execute()
@@ -329,6 +346,10 @@ func (r *RegionResource) applyRegionCredentialRotations(ctx context.Context, reg
 		}
 		if rotated != nil {
 			data.ProxyAPIKey = types.StringValue(rotated.ApiKey)
+		}
+		data.ProxyAPIKeyRotationID = planned.ProxyAPIKeyRotationID
+		if !persist() {
+			return httpResp, nil
 		}
 	}
 
@@ -341,6 +362,10 @@ func (r *RegionResource) applyRegionCredentialRotations(ctx context.Context, reg
 		if rotated != nil {
 			data.SSHGatewayAPIKey = types.StringValue(rotated.ApiKey)
 		}
+		data.SSHGatewayRotationID = planned.SSHGatewayRotationID
+		if !persist() {
+			return httpResp, nil
+		}
 	}
 
 	if rotationIDChanged(planned.SnapshotManagerRotationID, prior.SnapshotManagerRotationID) {
@@ -352,6 +377,10 @@ func (r *RegionResource) applyRegionCredentialRotations(ctx context.Context, reg
 		if rotated != nil {
 			data.SnapshotManagerUsername = types.StringValue(rotated.Username)
 			data.SnapshotManagerPassword = types.StringValue(rotated.Password)
+		}
+		data.SnapshotManagerRotationID = planned.SnapshotManagerRotationID
+		if !persist() {
+			return httpResp, nil
 		}
 	}
 

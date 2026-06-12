@@ -157,12 +157,16 @@ func (r *OrganizationInvitationResource) Read(ctx context.Context, req resource.
 	}
 
 	invitation, httpResp, err := r.findInvitation(ctx, data.OrganizationID.ValueString(), data.ID.ValueString())
-	if isNotFound(httpResp) || invitation == nil {
+	if isNotFound(httpResp) {
 		resp.State.RemoveResource(ctx)
 		return
 	}
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to read Daytona organization invitation", "read organization invitation", httpResp, err)
+		return
+	}
+	if invitation == nil {
+		resp.State.RemoveResource(ctx)
 		return
 	}
 

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	apiclient "github.com/daytonaio/daytona/libs/api-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -18,8 +19,17 @@ import (
 
 const organizationHeader = "X-Daytona-Organization-ID"
 
+// requestTimeout bounds every API request so a stalled connection fails instead
+// of hanging terraform apply indefinitely.
+const requestTimeout = 5 * time.Minute
+
+// maxErrorBodyBytes bounds how much of a response body is buffered for error
+// reporting.
+const maxErrorBodyBytes = 1 << 20
+
 type daytonaClient struct {
 	api            *apiclient.APIClient
+	httpClient     *http.Client
 	apiURL         string
 	authToken      string
 	organizationID string
@@ -43,8 +53,12 @@ func newDaytonaClient(apiURL, authToken, organizationID, version string) *dayton
 		cfg.AddDefaultHeader(organizationHeader, strings.TrimSpace(organizationID))
 	}
 
+	httpClient := &http.Client{Timeout: requestTimeout}
+	cfg.HTTPClient = httpClient
+
 	return &daytonaClient{
 		api:            apiclient.NewAPIClient(cfg),
+		httpClient:     httpClient,
 		apiURL:         apiURL,
 		authToken:      authToken,
 		organizationID: strings.TrimSpace(organizationID),
@@ -71,12 +85,12 @@ func (c *daytonaClient) patchJSON(ctx context.Context, endpoint string, payload 
 		req.Header.Set(organizationHeader, c.organizationID)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.httpClient.Do(req)
 	if err != nil || resp == nil {
 		return resp, err
 	}
 
-	respBody, readErr := io.ReadAll(resp.Body)
+	respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
 	resp.Body.Close()
 	resp.Body = io.NopCloser(bytes.NewBuffer(respBody))
 	if readErr != nil {

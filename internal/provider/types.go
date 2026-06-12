@@ -5,10 +5,36 @@ package provider
 
 import (
 	"context"
+	"reflect"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
+
+// nullUnknownModelValues replaces unknown attribute values in a resource model with nulls so a
+// partially-populated model can be persisted to state before follow-up API calls run. Saving
+// state as soon as the remote object exists prevents orphaning it when a later call fails.
+func nullUnknownModelValues(ctx context.Context, model any) {
+	v := reflect.ValueOf(model).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		if !field.CanInterface() || !field.CanSet() {
+			continue
+		}
+		value, ok := field.Interface().(attr.Value)
+		if !ok || !value.IsUnknown() {
+			continue
+		}
+		typ := value.Type(ctx)
+		nullValue, err := typ.ValueFromTerraform(ctx, tftypes.NewValue(typ.TerraformType(ctx), nil))
+		if err != nil {
+			continue
+		}
+		field.Set(reflect.ValueOf(nullValue))
+	}
+}
 
 func optionalString(value types.String) *string {
 	if value.IsNull() || value.IsUnknown() || value.ValueString() == "" {

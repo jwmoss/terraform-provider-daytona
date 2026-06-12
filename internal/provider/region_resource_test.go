@@ -103,13 +103,29 @@ func TestRegionResourceCredentialRotations(t *testing.T) {
 		SnapshotManagerRotationID: types.StringValue("rotation-1"),
 	}
 	planned := prior
+	planned.ID = types.StringValue("region-1")
 	planned.ProxyAPIKeyRotationID = types.StringValue("rotation-2")
 	planned.SSHGatewayRotationID = types.StringValue("rotation-2")
 	planned.SnapshotManagerRotationID = types.StringValue("rotation-2")
 	data := prior
 
-	if _, err := regionResource.applyRegionCredentialRotations(context.Background(), "region-1", planned, prior, &data); err != nil {
+	persistCalls := 0
+	persist := func() bool {
+		persistCalls++
+		return true
+	}
+
+	if _, err := regionResource.applyRegionCredentialRotations(context.Background(), planned, prior, &data, persist); err != nil {
 		t.Fatalf("unexpected rotation error: %s", err)
+	}
+
+	// Each rotation must persist as soon as its credential lands, so a later
+	// rotation failure cannot lose an already-regenerated credential.
+	if persistCalls != 3 {
+		t.Fatalf("expected state to persist after each of 3 rotations, got %d", persistCalls)
+	}
+	if data.ProxyAPIKeyRotationID.ValueString() != "rotation-2" {
+		t.Fatalf("expected proxy rotation ID to advance, got %q", data.ProxyAPIKeyRotationID.ValueString())
 	}
 
 	if data.ProxyAPIKey.ValueString() != "new-proxy-key" {

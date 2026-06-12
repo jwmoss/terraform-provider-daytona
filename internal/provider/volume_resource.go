@@ -127,6 +127,14 @@ func (r *VolumeResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	// Persist the volume before polling so a timeout cannot orphan it.
+	data = flattenVolume(volume, data)
+	nullUnknownModelValues(ctx, &data)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	volume, httpResp, err = r.waitForVolumeDeletable(ctx, volume.Id)
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to wait for Daytona volume creation", "wait for volume creation", httpResp, err)
