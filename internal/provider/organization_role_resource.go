@@ -131,12 +131,16 @@ func (r *OrganizationRoleResource) Read(ctx context.Context, req resource.ReadRe
 	}
 
 	role, httpResp, err := r.findRole(ctx, data.OrganizationID.ValueString(), data.ID.ValueString())
-	if isNotFound(httpResp) || role == nil {
+	if isNotFound(httpResp) {
 		resp.State.RemoveResource(ctx)
 		return
 	}
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to read Daytona organization role", "read organization role", httpResp, err)
+		return
+	}
+	if role == nil {
+		resp.State.RemoveResource(ctx)
 		return
 	}
 

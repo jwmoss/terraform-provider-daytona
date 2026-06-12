@@ -249,6 +249,17 @@ func (r *OrganizationRegionQuotaResource) Delete(ctx context.Context, req resour
 	var data organizationRegionQuotaResourceModel
 
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.AddWarning(
+		"Daytona organization region quota not deleted",
+		fmt.Sprintf(
+			"Daytona's organization API does not support deleting region quotas, so the quota for organization %q, region %q, and sandbox class %q remains active. Terraform has only stopped managing it. Use daytona_admin_organization_region_quota to delete quotas.",
+			data.OrganizationID.ValueString(), data.RegionID.ValueString(), data.SandboxClass.ValueString(),
+		),
+	)
 }
 
 func (r *OrganizationRegionQuotaResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

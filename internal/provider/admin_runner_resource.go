@@ -206,6 +206,13 @@ func (r *AdminRunnerResource) Create(ctx context.Context, req resource.CreateReq
 		data.APIKey = types.StringValue(created.ApiKey)
 	}
 
+	// Persist the runner before follow-up calls so a failure cannot orphan it.
+	nullUnknownModelValues(ctx, &data)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	runner, httpResp, err := r.client.api.AdminAPI.AdminGetRunnerById(ctx, created.Id).Execute()
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to read created Daytona admin runner", "read admin runner", httpResp, err)

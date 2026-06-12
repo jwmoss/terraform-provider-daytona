@@ -92,6 +92,12 @@ func (p *DaytonaProvider) Configure(ctx context.Context, req provider.ConfigureR
 	authToken := strings.TrimSpace(apiKey)
 	if strings.TrimSpace(accessToken) != "" {
 		authToken = strings.TrimSpace(accessToken)
+		if data.AccessToken.IsNull() && !data.APIKey.IsNull() && strings.TrimSpace(apiKey) != "" {
+			resp.Diagnostics.AddWarning(
+				"DAYTONA_ACCESS_TOKEN overrides configured api_key",
+				"The provider is authenticating with the access token from the DAYTONA_ACCESS_TOKEN environment variable even though api_key is set in the provider configuration, because access tokens take precedence. Unset DAYTONA_ACCESS_TOKEN to authenticate with the configured api_key.",
+			)
+		}
 	}
 
 	if authToken == "" {

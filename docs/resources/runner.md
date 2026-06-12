@@ -31,9 +31,7 @@ resource "daytona_runner" "example" {
 
 ### Optional
 
-> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
-
-- `draining` (Boolean, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Sets Daytona draining mode for the runner. Daytona accepts this value through the API but does not return it in runner reads, so Terraform treats it as write-only.
+- `draining` (Boolean) Sets Daytona draining mode for the runner. Daytona does not return this value in runner reads, so Terraform tracks the last value it applied.
 - `tags` (List of String) Tags associated with the runner.
 - `unschedulable` (Boolean) Whether Daytona should stop scheduling new work on the runner.
 

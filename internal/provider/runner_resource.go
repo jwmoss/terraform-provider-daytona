@@ -100,8 +100,7 @@ func (r *RunnerResource) Schema(ctx context.Context, req resource.SchemaRequest,
 			},
 			"draining": schema.BoolAttribute{
 				Optional:            true,
-				WriteOnly:           true,
-				MarkdownDescription: "Sets Daytona draining mode for the runner. Daytona accepts this value through the API but does not return it in runner reads, so Terraform treats it as write-only.",
+				MarkdownDescription: "Sets Daytona draining mode for the runner. Daytona does not return this value in runner reads, so Terraform tracks the last value it applied.",
 			},
 			"cpu":        computedStringAttribute("Runner CPU capacity."),
 			"memory":     computedStringAttribute("Runner memory capacity in GiB."),
@@ -161,6 +160,14 @@ func (r *RunnerResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	data.ID = types.StringValue(created.Id)
 	data.APIKey = types.StringValue(created.ApiKey)
+
+	// Persist the runner ID and one-time API key before follow-up calls so a
+	// failure cannot orphan the runner or lose the key.
+	nullUnknownModelValues(ctx, &data)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	runner, httpResp, err := r.client.api.RunnersAPI.GetRunnerById(ctx, created.Id).Execute()
 	if err != nil {

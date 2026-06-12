@@ -386,48 +386,65 @@ func (d *collectionDataSource) readItems(ctx context.Context, organizationID typ
 		}
 		return items, nil
 	case "sandboxes":
-		sandboxes, httpResp, err := d.client.api.SandboxAPI.ListSandboxes(ctx).Limit(100).Execute()
-		if err != nil {
-			addAPIError(diags, "Unable to list Daytona sandboxes", "list sandboxes", httpResp, err)
-			return nil, err
-		}
-		items := make([]collectionItemModel, 0, len(sandboxes.Items))
-		for _, sandbox := range sandboxes.Items {
-			item := newCollectionItem()
-			item.ID = types.StringValue(sandbox.Id)
-			item.Name = types.StringValue(sandbox.Name)
-			item.OrganizationID = types.StringValue(sandbox.OrganizationId)
-			item.Target = types.StringValue(sandbox.Target)
-			item.Public = types.BoolValue(sandbox.Public)
-			item.CreatedAt = pointerStringValue(sandbox.CreatedAt)
-			item.UpdatedAt = pointerStringValue(sandbox.UpdatedAt)
-			if sandbox.State != nil {
-				item.State = types.StringValue(string(*sandbox.State))
+		var items []collectionItemModel
+		cursor := ""
+		for {
+			request := d.client.api.SandboxAPI.ListSandboxes(ctx).Limit(100)
+			if cursor != "" {
+				request = request.Cursor(cursor)
 			}
-			if sandbox.RunnerId != nil {
-				item.RunnerID = types.StringValue(*sandbox.RunnerId)
+			sandboxes, httpResp, err := request.Execute()
+			if err != nil {
+				addAPIError(diags, "Unable to list Daytona sandboxes", "list sandboxes", httpResp, err)
+				return nil, err
 			}
-			items = append(items, item)
+			for _, sandbox := range sandboxes.Items {
+				item := newCollectionItem()
+				item.ID = types.StringValue(sandbox.Id)
+				item.Name = types.StringValue(sandbox.Name)
+				item.OrganizationID = types.StringValue(sandbox.OrganizationId)
+				item.Target = types.StringValue(sandbox.Target)
+				item.Public = types.BoolValue(sandbox.Public)
+				item.CreatedAt = pointerStringValue(sandbox.CreatedAt)
+				item.UpdatedAt = pointerStringValue(sandbox.UpdatedAt)
+				if sandbox.State != nil {
+					item.State = types.StringValue(string(*sandbox.State))
+				}
+				if sandbox.RunnerId != nil {
+					item.RunnerID = types.StringValue(*sandbox.RunnerId)
+				}
+				items = append(items, item)
+			}
+			next := sandboxes.NextCursor.Get()
+			if next == nil || *next == "" || *next == cursor || len(sandboxes.Items) == 0 {
+				break
+			}
+			cursor = *next
 		}
 		return items, nil
 	case "snapshots":
-		snapshots, httpResp, err := d.client.api.SnapshotsAPI.GetAllSnapshots(ctx).Limit(100).Execute()
-		if err != nil {
-			addAPIError(diags, "Unable to list Daytona snapshots", "list snapshots", httpResp, err)
-			return nil, err
-		}
-		items := make([]collectionItemModel, 0, len(snapshots.Items))
-		for _, snapshot := range snapshots.Items {
-			item := newCollectionItem()
-			item.ID = types.StringValue(snapshot.Id)
-			item.Name = types.StringValue(snapshot.Name)
-			item.State = types.StringValue(string(snapshot.State))
-			item.CreatedAt = types.StringValue(snapshot.CreatedAt.Format(time.RFC3339))
-			item.UpdatedAt = types.StringValue(snapshot.UpdatedAt.Format(time.RFC3339))
-			if snapshot.OrganizationId != nil {
-				item.OrganizationID = types.StringValue(*snapshot.OrganizationId)
+		var items []collectionItemModel
+		for page := float32(1); ; page++ {
+			snapshots, httpResp, err := d.client.api.SnapshotsAPI.GetAllSnapshots(ctx).Page(page).Limit(100).Execute()
+			if err != nil {
+				addAPIError(diags, "Unable to list Daytona snapshots", "list snapshots", httpResp, err)
+				return nil, err
 			}
-			items = append(items, item)
+			for _, snapshot := range snapshots.Items {
+				item := newCollectionItem()
+				item.ID = types.StringValue(snapshot.Id)
+				item.Name = types.StringValue(snapshot.Name)
+				item.State = types.StringValue(string(snapshot.State))
+				item.CreatedAt = types.StringValue(snapshot.CreatedAt.Format(time.RFC3339))
+				item.UpdatedAt = types.StringValue(snapshot.UpdatedAt.Format(time.RFC3339))
+				if snapshot.OrganizationId != nil {
+					item.OrganizationID = types.StringValue(*snapshot.OrganizationId)
+				}
+				items = append(items, item)
+			}
+			if page >= snapshots.TotalPages || len(snapshots.Items) == 0 {
+				break
+			}
 		}
 		return items, nil
 	case "docker_registries":
