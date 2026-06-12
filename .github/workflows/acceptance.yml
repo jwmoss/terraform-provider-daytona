@@ -41,5 +41,6 @@ jobs:
         env:
           TF_ACC: "1"
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
+          DAYTONA_HEALTH_CHECK_API_KEY: ${{ secrets.DAYTONA_HEALTH_CHECK_API_KEY }}
         run: go test -v -run TestAcc ./internal/provider/
         timeout-minutes: 20
