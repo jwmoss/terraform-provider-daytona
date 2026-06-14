@@ -19,6 +19,7 @@ provider-defined actions), so they all work with OpenTofu as well.
 | [agent-platform-bootstrap](./agent-platform-bootstrap) | Composition example: the full durable substrate (registry, golden snapshot, region quota, OpenTelemetry, runtime key) in one apply, with outputs the agent runtime consumes |
 | [aws-runner-fleet](./aws-runner-fleet) | Cross-provider: launch EC2 hosts and register each as a Daytona runner in one apply, feeding the runner key into instance user_data |
 | [ecr-snapshot-pipeline](./ecr-snapshot-pipeline) | Cross-provider: manage ECR repositories, wire Daytona to pull from them, and define golden snapshots from those images |
+| [migrating-from-terracurl](./migrating-from-terracurl) | Replace the `terracurl_request` region/runner registration in [daytonaio/terraform-modules](https://github.com/daytonaio/terraform-modules) with `daytona_region`/`daytona_runner`, including an import-based migration runbook for live state |
 
 Each example authenticates the provider through the standard environment
 variables:
