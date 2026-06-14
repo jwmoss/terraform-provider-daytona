@@ -7,7 +7,7 @@ ENHANCEMENTS:
 NOTES:
 
 - Added acceptance-test sweepers (`go test ./internal/provider/ -sweep=all`) for volumes, sandboxes, snapshots, and Docker registries that delete leaked `tf-acc-`-prefixed resources after a failed run.
-- Added live acceptance coverage for `daytona_sandbox` and `daytona_docker_registry`; `daytona_snapshot` acceptance is opt-in via `DAYTONA_ACC_SNAPSHOT_BUILD=1` because it builds a real image.
+- Added live acceptance coverage for `daytona_sandbox` under the API-key precheck. `daytona_docker_registry` acceptance is opt-in via `DAYTONA_ACC_REGISTRY=1` (needs the `WRITE_REGISTRIES` permission) and `daytona_snapshot` acceptance is opt-in via `DAYTONA_ACC_SNAPSHOT_BUILD=1` (builds a real image).
 - Added platform use-case examples.
 
 ## 0.3.0 (2026-06-11)
