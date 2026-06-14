@@ -5,6 +5,12 @@ NOTES:
 - Removed the per-file MPL-2.0 license headers from the Go sources; license intent is carried by the `LICENSE` file, whose copyright now attributes the work to the author instead of the scaffolding template default. No functional provider changes.
 - Added a `CONTRIBUTING.md`, GitHub issue forms (bug report, feature request, and a config routing security reports to `SECURITY.md`), and README status/license badges with `Contributing` and `License` sections.
 
+## 0.4.2 (2026-06-14)
+
+NOTES:
+
+- Re-tagged release of the 0.4.1 commit with no functional changes.
+
 ## 0.4.1 (2026-06-14)
 
 BUG FIXES:
