@@ -37,10 +37,11 @@ var (
 )
 
 // newRetryableHTTPClient returns an *http.Client that retries transient Daytona
-// API failures (HTTP 429, 5xx, and connection errors) with capped exponential
-// backoff that honors any Retry-After header, so a single transient blip does
-// not fail an entire terraform apply. The timeout bounds each individual
-// attempt, not the whole retry sequence.
+// API failures with capped exponential backoff that honors any Retry-After
+// header, so a single transient blip does not fail an entire terraform apply.
+// Retries are gated by safeRetryPolicy so non-idempotent mutations are never
+// replayed. The timeout bounds each individual attempt, not the whole retry
+// sequence.
 func newRetryableHTTPClient(timeout time.Duration) *http.Client {
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryMax = maxRetries
@@ -48,8 +49,45 @@ func newRetryableHTTPClient(timeout time.Duration) *http.Client {
 	retryClient.RetryWaitMax = retryWaitMax
 	retryClient.Logger = nil
 	retryClient.HTTPClient.Timeout = timeout
+	retryClient.CheckRetry = safeRetryPolicy
 
 	return retryClient.StandardClient()
+}
+
+// safeRetryPolicy retries only failures that are safe to replay, so a lost
+// response can never duplicate a create or repeat a non-idempotent mutation:
+//   - HTTP 429 is retried for any method, because the server rejects the request
+//     before processing it (nothing was mutated).
+//   - HTTP 5xx is retried only for idempotent methods, because the server may
+//     have already applied the change before the error was returned.
+//   - Transport errors carry no response (and so no method here), and the
+//     request may have reached the server, so they are not retried.
+func safeRetryPolicy(ctx context.Context, resp *http.Response, err error) (bool, error) {
+	if ctx.Err() != nil {
+		return false, ctx.Err()
+	}
+	if err != nil || resp == nil {
+		return false, err
+	}
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return true, nil
+	}
+	if resp.Request != nil && !isIdempotentMethod(resp.Request.Method) {
+		return false, nil
+	}
+
+	return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
+}
+
+// isIdempotentMethod reports whether replaying a request with this method cannot
+// cause a duplicate or additional side effect.
+func isIdempotentMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodPut, http.MethodDelete, http.MethodTrace:
+		return true
+	default:
+		return false
+	}
 }
 
 // maxErrorBodyBytes bounds how much of a response body is buffered for error

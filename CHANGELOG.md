@@ -1,3 +1,9 @@
+## 0.4.1 (2026-06-14)
+
+BUG FIXES:
+
+- Automatic API retries no longer replay non-idempotent mutations. The v0.4.0 retry wrapper retried 5xx and connection errors for every method, so a create whose response was lost could be replayed and duplicate a billable resource. Retries are now gated: HTTP 429 is retried for any request (the server rejects it before processing), 5xx is retried only for idempotent methods (`GET`/`HEAD`/`PUT`/`DELETE`), and transport errors are not retried.
+
 ## 0.4.0 (2026-06-14)
 
 ENHANCEMENTS:

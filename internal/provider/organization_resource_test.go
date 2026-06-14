@@ -242,10 +242,10 @@ func TestOrganizationResourceCreatePersistsStateBeforeSettings(t *testing.T) {
 	if requests["POST /organizations"] != 1 {
 		t.Fatalf("expected one create request, got %d", requests["POST /organizations"])
 	}
-	// A 500 from the quota endpoint is transient, so the client retries it the
-	// full budget before surfacing the failure; state must still be persisted.
-	if got := requests["PATCH /organizations/org-1/quota"]; got != maxRetries+1 {
-		t.Fatalf("expected %d quota requests (initial + retries), got %d", maxRetries+1, got)
+	// A PATCH is non-idempotent, so a 500 from the quota endpoint is not retried;
+	// the failure surfaces after one request and state must still be persisted.
+	if got := requests["PATCH /organizations/org-1/quota"]; got != 1 {
+		t.Fatalf("expected one quota request, got %d", got)
 	}
 }
 
