@@ -265,12 +265,15 @@ Run API-key live acceptance tests:
 
 ```shell
 TF_ACC=1 DAYTONA_API_KEY="dtn_..." \
-  go test ./internal/provider -run 'TestAcc(CurrentAPIKeyDataSource|VolumeResource|SandboxResource|DockerRegistryResource)_basic' -v
+  go test ./internal/provider -run 'TestAcc(CurrentAPIKeyDataSource|VolumeResource|SandboxResource)_basic' -v
 ```
 
-Run the snapshot acceptance test, which builds a real image and is therefore opt-in:
+Run the opt-in resource acceptance tests. The Docker registry test needs an API key with the `WRITE_REGISTRIES` permission, and the snapshot test builds a real image:
 
 ```shell
+TF_ACC=1 DAYTONA_API_KEY="dtn_..." DAYTONA_ACC_REGISTRY=1 \
+  go test ./internal/provider -run TestAccDockerRegistryResource_basic -v
+
 TF_ACC=1 DAYTONA_API_KEY="dtn_..." DAYTONA_ACC_SNAPSHOT_BUILD=1 \
   go test ./internal/provider -run TestAccSnapshotResource_basic -v
 ```

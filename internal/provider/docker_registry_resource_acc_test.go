@@ -5,6 +5,7 @@ package provider
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
@@ -14,9 +15,14 @@ import (
 // TestAccDockerRegistryResource_basic creates and destroys a real Daytona Docker
 // registry record using an API key. The registry stores credential metadata, so
 // the test uses placeholder credentials and does not contact any external
-// registry.
+// registry. Creating a registry requires the WRITE_REGISTRIES organization
+// permission, which not every API key carries, so the test is opt-in via
+// DAYTONA_ACC_REGISTRY to avoid failing the default API-key CI run on a 403.
 func TestAccDockerRegistryResource_basic(t *testing.T) {
 	testAccPreCheckAPIKey(t)
+	if os.Getenv("DAYTONA_ACC_REGISTRY") == "" {
+		t.Skip("set DAYTONA_ACC_REGISTRY=1 to run the Docker registry acceptance test (needs the WRITE_REGISTRIES permission)")
+	}
 
 	name := "tf-acc-registry-" + acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 
