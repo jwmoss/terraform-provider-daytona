@@ -16,6 +16,7 @@ provider-defined actions), so they all work with OpenTofu as well.
 | [organization-governance](./organization-governance) | Custom roles, member access, invitations, region quotas, and OpenTelemetry export as code |
 | [golden-snapshot-pipeline](./golden-snapshot-pipeline) | Private registry credentials, versioned golden snapshots, and shared volumes that SDK-created sandboxes consume |
 | [ci-service-api-keys](./ci-service-api-keys) | Scoped, expiring API keys for CI systems and service accounts |
+| [agent-platform-bootstrap](./agent-platform-bootstrap) | Composition example: the full durable substrate (registry, golden snapshot, region quota, OpenTelemetry, runtime key) in one apply, with outputs the agent runtime consumes |
 
 Each example authenticates the provider through the standard environment
 variables:
