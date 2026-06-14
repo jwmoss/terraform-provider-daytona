@@ -11,131 +11,22 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
 
 - Provider configuration through `DAYTONA_API_KEY`, `DAYTONA_ACCESS_TOKEN`, `DAYTONA_API_URL`, and `DAYTONA_ORGANIZATION_ID`
 - Daytona managed-service default API URL: `https://app.daytona.io/api`
-- Resources:
-  - `daytona_admin_runner`
-  - `daytona_admin_organization_region_quota`
-  - `daytona_api_key`
-  - `daytona_docker_registry`
-  - `daytona_organization`
-  - `daytona_organization_invitation`
-  - `daytona_organization_member_access`
-  - `daytona_organization_otel_config`
-  - `daytona_organization_region_quota`
-  - `daytona_organization_role`
-  - `daytona_region`
-  - `daytona_runner`
-  - `daytona_sandbox`
-  - `daytona_snapshot`
-  - `daytona_volume`
-- Actions:
-  - `daytona_accept_organization_invitation`
-  - `daytona_activate_snapshot`
-  - `daytona_admin_create_user`
-  - `daytona_admin_initialize_webhooks`
-  - `daytona_admin_regenerate_user_key_pair`
-  - `daytona_admin_recover_sandbox`
-  - `daytona_admin_send_webhook`
-  - `daytona_admin_set_default_docker_registry`
-  - `daytona_admin_set_snapshot_general_status`
-  - `daytona_archive_sandbox`
-  - `daytona_create_sandbox_backup`
-  - `daytona_create_sandbox_snapshot`
-  - `daytona_deactivate_snapshot`
-  - `daytona_decline_organization_invitation`
-  - `daytona_enroll_sms_mfa`
-  - `daytona_expire_sandbox_signed_port_preview_url`
-  - `daytona_fork_sandbox`
-  - `daytona_initialize_webhooks`
-  - `daytona_leave_organization`
-  - `daytona_link_account`
-  - `daytona_recover_sandbox`
-  - `daytona_refresh_webhook_endpoints`
-  - `daytona_revoke_api_key_for_user`
-  - `daytona_revoke_sandbox_ssh_access`
-  - `daytona_start_sandbox`
-  - `daytona_stop_sandbox`
-  - `daytona_suspend_organization`
-  - `daytona_unlink_account`
-  - `daytona_unsuspend_organization`
-  - `daytona_update_sandbox_last_activity`
-- Data sources:
-  - `daytona_account_providers`
-  - `daytona_admin_audit_logs`
-  - `daytona_admin_runner`
-  - `daytona_admin_runners`
-  - `daytona_admin_snapshot_image_cleanup_status`
-  - `daytona_admin_user`
-  - `daytona_admin_users`
-  - `daytona_admin_webhook_message_attempts`
-  - `daytona_admin_webhook_status`
-  - `daytona_api_key`
-  - `daytona_api_keys`
-  - `daytona_authenticated_runner_sandboxes`
-  - `daytona_config`
-  - `daytona_current_api_key`
-  - `daytona_current_user`
-  - `daytona_current_user_organization_invitations`
-  - `daytona_docker_registries`
-  - `daytona_docker_registry`
-  - `daytona_docker_registry_push_access`
-  - `daytona_health`
-  - `daytona_job`
-  - `daytona_jobs`
-  - `daytona_object_storage_push_access`
-  - `daytona_organization_audit_logs`
-  - `daytona_organization_invitation`
-  - `daytona_organization_invitations`
-  - `daytona_organization_member`
-  - `daytona_organization_members`
-  - `daytona_organization_otel_config`
-  - `daytona_organization_otel_config_by_sandbox_auth_token`
-  - `daytona_organization_role`
-  - `daytona_organization_roles`
-  - `daytona_organization_usage`
-  - `daytona_organization`
-  - `daytona_organizations`
-  - `daytona_region`
-  - `daytona_regions`
-  - `daytona_runner`
-  - `daytona_runner_for_sandbox`
-  - `daytona_runner_full`
-  - `daytona_runners`
-  - `daytona_runners_by_snapshot_ref`
-  - `daytona_sandbox_access`
-  - `daytona_sandbox_ancestors`
-  - `daytona_sandbox_auth_token_validation`
-  - `daytona_sandbox_build_logs_url`
-  - `daytona_sandbox_forks`
-  - `daytona_sandbox_id_from_signed_preview_token`
-  - `daytona_sandbox_logs`
-  - `daytona_sandbox_metrics`
-  - `daytona_sandbox_organization`
-  - `daytona_sandbox_parent`
-  - `daytona_sandbox_port_preview_url`
-  - `daytona_sandbox_public_status`
-  - `daytona_sandbox_query`
-  - `daytona_sandbox_region_quota`
-  - `daytona_sandbox_signed_port_preview_url`
-  - `daytona_sandbox_ssh_access`
-  - `daytona_sandbox_ssh_access_validation`
-  - `daytona_sandbox`
-  - `daytona_sandboxes`
-  - `daytona_sandbox_trace_spans`
-  - `daytona_sandbox_traces`
-  - `daytona_sandbox_toolbox_proxy_url`
-  - `daytona_shared_regions`
-  - `daytona_snapshot_build_logs_url`
-  - `daytona_snapshot`
-  - `daytona_snapshots`
-  - `daytona_volume`
-  - `daytona_volume_by_name`
-  - `daytona_volumes`
-  - `daytona_webhook_app_portal_access`
-  - `daytona_webhook_initialization_status`
+- Coverage across the Daytona control plane, grouped by area:
+  - **Platform** — runners, regions, region quotas, Docker registries, snapshots, volumes
+  - **Governance** — organizations, roles, member access, invitations, API keys, OpenTelemetry config
+  - **Sandboxes** — a sandbox lifecycle resource plus a broad set of sandbox and observability data sources
+  - **Actions** — optional provider-defined actions (snapshot activate/deactivate, sandbox start/stop/fork/archive, webhook and admin operations) for Terraform 1.14+
 
-The provider is backed by Daytona's generated Go OpenAPI client: `github.com/daytonaio/daytona/libs/api-client-go`.
+The provider exposes 15 resources, 73 data sources, and 30 actions, all backed by
+Daytona's generated Go OpenAPI client (`github.com/daytonaio/daytona/libs/api-client-go`).
 
-See [docs/api-coverage.md](docs/api-coverage.md) for the current Daytona API coverage matrix and intentionally excluded endpoints.
+## Documentation
+
+The full reference for every resource, data source, and action is generated into
+[`docs/`](docs/) with [`tfplugindocs`](https://github.com/hashicorp/terraform-plugin-docs)
+and rendered on the Terraform Registry. See
+[docs/api-coverage.md](docs/api-coverage.md) for the Daytona API coverage matrix and
+intentionally excluded endpoints.
 
 ## Example
 
@@ -322,10 +213,6 @@ make release-snapshot
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, documentation, and pull
 request guidelines.
-
-## Repository Status
-
-This provider was scaffolded from `hashicorp/terraform-provider-scaffolding-framework` and then converted to a Daytona-specific provider module at `github.com/jwmoss/terraform-provider-daytona`.
 
 ## License
 
