@@ -184,7 +184,7 @@ Daytona API keys work for API-key-enabled routes such as current API-key lookup 
 Terraform provider installation uses provider addresses rather than module-style GitHub sources. Until this provider is published to Terraform Registry, install the provider binary from GitHub and point Terraform at the local build:
 
 ```shell
-go install github.com/jwmoss/terraform-provider-daytona@v0.4.1
+go install github.com/jwmoss/terraform-provider-daytona@v0.4.2
 
 cat > ~/.terraformrc <<EOF
 provider_installation {
@@ -212,7 +212,7 @@ This repository also includes a reusable module example that can be consumed dir
 
 ```terraform
 module "daytona_sandbox" {
-  source = "github.com/jwmoss/terraform-provider-daytona//examples/modules/daytona-sandbox?ref=v0.4.1"
+  source = "github.com/jwmoss/terraform-provider-daytona//examples/modules/daytona-sandbox?ref=v0.4.2"
 
   name          = "agent-runtime"
   snapshot      = "daytonaio/sandbox:0.6.0"
