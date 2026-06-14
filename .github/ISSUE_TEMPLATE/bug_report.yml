@@ -1,0 +1,53 @@
+name: Bug report
+description: Report incorrect or unexpected provider behavior
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please do not report security
+        vulnerabilities here — follow [SECURITY.md](../blob/main/SECURITY.md) instead.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of the bug and what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Terraform configuration
+      description: The minimal `.tf` configuration that reproduces the issue. Redact any secrets.
+      render: terraform
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The exact commands you ran (for example `terraform apply`) and the order.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Relevant output or logs. Set `TF_LOG=DEBUG` for more detail, and redact secrets.
+      render: shell
+    validations:
+      required: false
+  - type: input
+    id: provider-version
+    attributes:
+      label: Provider version
+      placeholder: v0.4.1
+    validations:
+      required: true
+  - type: input
+    id: terraform-version
+    attributes:
+      label: Terraform / OpenTofu version
+      placeholder: Terraform v1.9.0
+    validations:
+      required: true

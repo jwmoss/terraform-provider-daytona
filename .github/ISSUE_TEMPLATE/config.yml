@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Provider documentation
+    url: https://github.com/jwmoss/terraform-provider-daytona/tree/main/docs
+    about: Resource, data source, and action reference for this provider.
+  - name: Daytona documentation
+    url: https://www.daytona.io/docs
+    about: Questions about Daytona itself rather than this Terraform provider.
+  - name: Security vulnerabilities
+    url: https://github.com/jwmoss/terraform-provider-daytona/blob/main/SECURITY.md
+    about: Report security issues privately, not as a public issue.

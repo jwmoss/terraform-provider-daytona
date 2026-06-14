@@ -1,5 +1,10 @@
 # Terraform Provider for Daytona
 
+[![Tests](https://github.com/jwmoss/terraform-provider-daytona/actions/workflows/test.yml/badge.svg)](https://github.com/jwmoss/terraform-provider-daytona/actions/workflows/test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/jwmoss/terraform-provider-daytona)](https://goreportcard.com/report/github.com/jwmoss/terraform-provider-daytona)
+[![Latest Release](https://img.shields.io/github/v/release/jwmoss/terraform-provider-daytona)](https://github.com/jwmoss/terraform-provider-daytona/releases)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](LICENSE)
+
 This repository contains a Terraform Plugin Framework provider for [Daytona](https://github.com/daytonaio/daytona). It lets teams manage Daytona sandboxes and supporting Daytona infrastructure with the same Terraform workflows they use for AWS, Azure, GCP, and other enterprise platform dependencies.
 
 ## Features
@@ -313,6 +318,15 @@ make release-check
 make release-snapshot
 ```
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, documentation, and pull
+request guidelines.
+
 ## Repository Status
 
 This provider was scaffolded from `hashicorp/terraform-provider-scaffolding-framework` and then converted to a Daytona-specific provider module at `github.com/jwmoss/terraform-provider-daytona`.
+
+## License
+
+This provider is distributed under the [Mozilla Public License 2.0](LICENSE).
