@@ -14,6 +14,7 @@ import (
 	"time"
 
 	apiclient "github.com/daytonaio/daytona/libs/api-client-go"
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
@@ -22,6 +23,34 @@ const organizationHeader = "X-Daytona-Organization-ID"
 // requestTimeout bounds every API request so a stalled connection fails instead
 // of hanging terraform apply indefinitely.
 const requestTimeout = 5 * time.Minute
+
+// maxRetries bounds how many times a transient Daytona API failure is retried
+// before the operation fails the terraform apply.
+const maxRetries = 4
+
+// retryWaitMin and retryWaitMax bound the exponential backoff between retries.
+// They are package variables so tests can shrink them; production keeps the
+// defaults below.
+var (
+	retryWaitMin = 1 * time.Second
+	retryWaitMax = 30 * time.Second
+)
+
+// newRetryableHTTPClient returns an *http.Client that retries transient Daytona
+// API failures (HTTP 429, 5xx, and connection errors) with capped exponential
+// backoff that honors any Retry-After header, so a single transient blip does
+// not fail an entire terraform apply. The timeout bounds each individual
+// attempt, not the whole retry sequence.
+func newRetryableHTTPClient(timeout time.Duration) *http.Client {
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryMax = maxRetries
+	retryClient.RetryWaitMin = retryWaitMin
+	retryClient.RetryWaitMax = retryWaitMax
+	retryClient.Logger = nil
+	retryClient.HTTPClient.Timeout = timeout
+
+	return retryClient.StandardClient()
+}
 
 // maxErrorBodyBytes bounds how much of a response body is buffered for error
 // reporting.
@@ -53,7 +82,7 @@ func newDaytonaClient(apiURL, authToken, organizationID, version string) *dayton
 		cfg.AddDefaultHeader(organizationHeader, strings.TrimSpace(organizationID))
 	}
 
-	httpClient := &http.Client{Timeout: requestTimeout}
+	httpClient := newRetryableHTTPClient(requestTimeout)
 	cfg.HTTPClient = httpClient
 
 	return &daytonaClient{

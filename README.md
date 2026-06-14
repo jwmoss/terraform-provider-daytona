@@ -265,7 +265,14 @@ Run API-key live acceptance tests:
 
 ```shell
 TF_ACC=1 DAYTONA_API_KEY="dtn_..." \
-  go test ./internal/provider -run 'TestAcc(CurrentAPIKeyDataSource|VolumeResource)_basic' -v
+  go test ./internal/provider -run 'TestAcc(CurrentAPIKeyDataSource|VolumeResource|SandboxResource|DockerRegistryResource)_basic' -v
+```
+
+Run the snapshot acceptance test, which builds a real image and is therefore opt-in:
+
+```shell
+TF_ACC=1 DAYTONA_API_KEY="dtn_..." DAYTONA_ACC_SNAPSHOT_BUILD=1 \
+  go test ./internal/provider -run TestAccSnapshotResource_basic -v
 ```
 
 Run JWT-only org/user acceptance tests:
@@ -283,6 +290,12 @@ TF_ACC=1 DAYTONA_HEALTH_CHECK_API_KEY="dtn_..." \
 ```
 
 Acceptance tests create real Daytona resources. Volume create/delete was verified live after adding lifecycle polling for Daytona's asynchronous volume states. The full org/user suite requires an OAuth access token because the current Daytona API rejects normal API keys on JWT-only routes; Daytona CLI API-key login has the same organization-command limitation and is not a substitute for browser/OAuth authentication.
+
+If an acceptance run is interrupted and leaves resources behind, clean up everything created with the `tf-acc-` name prefix using the sweepers:
+
+```shell
+DAYTONA_API_KEY="dtn_..." go test ./internal/provider/ -sweep=all
+```
 
 Generate provider documentation:
 
