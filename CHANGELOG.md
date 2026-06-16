@@ -1,3 +1,15 @@
+## 0.6.0 (2026-06-16)
+
+FEATURES:
+
+- `daytona_sandbox`: added persistent volume mounts with optional subpaths.
+- `daytona_sandbox`: added ordered GPU type preferences, assigned `gpu_type`, Dockerfile `build_info`, and `last_activity_at` state.
+- `daytona_snapshot`: added ordered GPU type preferences, assigned `gpu_type`, and Dockerfile `build_info` state.
+
+NOTES:
+
+- Added unit and acceptance coverage for the new sandbox and snapshot fields. The sandbox GPU acceptance test is gated by `DAYTONA_ACC_GPU` because it requires live GPU quota.
+
 ## 0.5.0 (2026-06-15)
 
 BUG FIXES:
