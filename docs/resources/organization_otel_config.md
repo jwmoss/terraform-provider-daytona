@@ -3,12 +3,12 @@
 page_title: "daytona_organization_otel_config Resource - daytona"
 subcategory: ""
 description: |-
-  Manages OpenTelemetry export configuration for a Daytona organization. Platform-admin / self-hosted only: the managed Daytona cloud rejects this endpoint for an organization owner (HTTP 401); it requires platform-admin credentials or a self-hosted deployment.
+  Manages OpenTelemetry export configuration for a Daytona organization. Requires the organization API (an access token / JWT); API-key auth is rejected. Header values are write-only: Daytona redacts them on read, so the configured values are kept in state and drift in header values cannot be detected.
 ---
 
 # daytona_organization_otel_config (Resource)
 
-Manages OpenTelemetry export configuration for a Daytona organization. **Platform-admin / self-hosted only:** the managed Daytona cloud rejects this endpoint for an organization owner (HTTP 401); it requires platform-admin credentials or a self-hosted deployment.
+Manages OpenTelemetry export configuration for a Daytona organization. Requires the organization API (an access token / JWT); API-key auth is rejected. Header values are write-only: Daytona redacts them on read, so the configured values are kept in state and drift in header values cannot be detected.
 
 ## Example Usage
 
