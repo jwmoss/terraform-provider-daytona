@@ -1,3 +1,20 @@
+## 0.5.0 (2026-06-15)
+
+BUG FIXES:
+
+- `daytona_docker_registry`: an unset `project` no longer fails with "inconsistent result after apply"; an empty value from the API is now mapped to null.
+- `daytona_api_key`: `user_id` and `last_used_at` are no longer left unknown after create (the create response omits them; they are set to null and populated on read).
+- `daytona_organization`: creating an organization no longer calls the admin-only quota endpoint when no quota is configured, so a non-admin organization create succeeds.
+- `daytona_organization_invitation`: `expires_at` is now Optional+Computed so a Daytona-assigned default expiry no longer breaks apply.
+- `daytona_snapshot`: `sandbox_class`, `cpu`, `gpu`, `memory`, and `disk` are now Optional+Computed so Daytona-assigned defaults no longer break apply.
+- `daytona_organization_otel_config`: the configuration is now read from the organization object instead of the dedicated read endpoint, which returns HTTP 401 for an organization owner; configured header values are preserved (the organization object redacts them).
+
+NOTES:
+
+- Added functional acceptance tests for all resources. Documented the API-key vs access-token (JWT) auth split; `daytona_region`, `daytona_runner`, and `daytona_admin_runner` are marked experimental (their endpoints are served only by self-hosted Daytona) and their acceptance tests are gated behind `DAYTONA_ACC_*` flags.
+- Added `ci/daytona-access-token.sh`, a local helper that mints an access token from a `daytona login` refresh token for running the organization-API acceptance tests.
+- The acceptance workflow now sets `DAYTONA_ACC_REGISTRY=1` so the Docker registry resource is exercised in CI.
+
 ## 0.4.3 (2026-06-14)
 
 NOTES:
