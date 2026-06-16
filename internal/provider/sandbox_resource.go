@@ -172,16 +172,6 @@ func optionalComputedReplaceStringAttribute(description string) schema.StringAtt
 	}
 }
 
-func replaceInt64Attribute(description string) schema.Int64Attribute {
-	return schema.Int64Attribute{
-		Optional:            true,
-		MarkdownDescription: description,
-		PlanModifiers: []planmodifier.Int64{
-			int64planmodifier.RequiresReplace(),
-		},
-	}
-}
-
 func optionalComputedReplaceInt64Attribute(description string) schema.Int64Attribute {
 	return schema.Int64Attribute{
 		Optional:            true,

@@ -83,7 +83,11 @@ func (r *OrganizationInvitationResource) Schema(ctx context.Context, req resourc
 			},
 			"expires_at": schema.StringAttribute{
 				Optional:            true,
-				MarkdownDescription: "Optional RFC3339 expiration timestamp for the invitation.",
+				Computed:            true,
+				MarkdownDescription: "RFC3339 expiration timestamp for the invitation. Defaults to a Daytona-assigned expiry when not set.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"status":     computedStringAttribute("Invitation status."),
 			"created_at": computedStringAttribute("Invitation creation timestamp."),

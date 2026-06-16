@@ -167,6 +167,11 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// Preserve the user's configured plan: the follow-up settings calls must key off
+	// what the user actually set, not the computed values the create response fills
+	// in (which would call the admin-only quota endpoint on every create).
+	plan := data
+
 	created, httpResp, err := r.client.api.OrganizationsAPI.CreateOrganization(ctx).
 		CreateOrganization(*apiclient.NewCreateOrganization(data.Name.ValueString(), data.DefaultRegionID.ValueString())).
 		Execute()
@@ -192,7 +197,7 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	if !r.applyMutableOrganizationSettings(ctx, organizationID, data, organizationResourceModel{}, true, &resp.Diagnostics) {
+	if !r.applyMutableOrganizationSettings(ctx, organizationID, plan, organizationResourceModel{}, true, &resp.Diagnostics) {
 		return
 	}
 

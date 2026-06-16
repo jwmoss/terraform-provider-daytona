@@ -28,14 +28,14 @@ resource "daytona_snapshot" "example" {
 
 ### Optional
 
-- `cpu` (Number) CPU cores allocated to sandboxes created from this snapshot.
-- `disk` (Number) Disk allocated to sandboxes created from this snapshot in GB.
+- `cpu` (Number) CPU cores allocated to sandboxes created from this snapshot. Defaults to a Daytona-assigned value when not set.
+- `disk` (Number) Disk allocated to sandboxes created from this snapshot in GB. Defaults to a Daytona-assigned value when not set.
 - `entrypoint` (List of String) Entrypoint command for the snapshot.
-- `gpu` (Number) GPU units allocated to sandboxes created from this snapshot.
+- `gpu` (Number) GPU units allocated to sandboxes created from this snapshot. Defaults to a Daytona-assigned value when not set.
 - `image_name` (String) Image name used to build the snapshot.
-- `memory` (Number) Memory allocated to sandboxes created from this snapshot in GB.
+- `memory` (Number) Memory allocated to sandboxes created from this snapshot in GB. Defaults to a Daytona-assigned value when not set.
 - `region_id` (String) Region ID where the snapshot will be available.
-- `sandbox_class` (String) Sandbox class for sandboxes created from this snapshot.
+- `sandbox_class` (String) Sandbox class for sandboxes created from this snapshot. Defaults to a Daytona-assigned class when not set.
 
 ### Read-Only
 

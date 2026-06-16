@@ -212,7 +212,11 @@ func flattenDockerRegistry(registry *apiclient.DockerRegistry, prior dockerRegis
 	prior.Name = types.StringValue(registry.Name)
 	prior.URL = types.StringValue(registry.Url)
 	prior.Username = types.StringValue(registry.Username)
-	prior.Project = types.StringValue(registry.Project)
+	if registry.Project == "" {
+		prior.Project = types.StringNull()
+	} else {
+		prior.Project = types.StringValue(registry.Project)
+	}
 	prior.RegistryType = types.StringValue(registry.RegistryType)
 	prior.CreatedAt = types.StringValue(registry.CreatedAt.Format(time.RFC3339))
 	prior.UpdatedAt = types.StringValue(registry.UpdatedAt.Format(time.RFC3339))

@@ -213,6 +213,12 @@ func flattenAPIKeyResponse(apiKey *apiclient.ApiKeyResponse, prior apiKeyResourc
 	prior.Value = types.StringValue(apiKey.Value)
 	prior.CreatedAt = types.StringValue(apiKey.CreatedAt.Format(time.RFC3339))
 
+	// The create response does not include the owning user or last-used time. Set
+	// them to known (null) values so the post-apply state has no unknowns; the read
+	// endpoint populates the real values on the next refresh.
+	prior.UserID = types.StringNull()
+	prior.LastUsedAt = types.StringNull()
+
 	if expiresAt, ok := apiKey.GetExpiresAtOk(); ok && expiresAt != nil {
 		prior.ExpiresAt = types.StringValue(expiresAt.Format(time.RFC3339))
 	} else if prior.ExpiresAt.IsUnknown() {

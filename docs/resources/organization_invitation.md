@@ -33,7 +33,7 @@ resource "daytona_organization_invitation" "example" {
 
 ### Optional
 
-- `expires_at` (String) Optional RFC3339 expiration timestamp for the invitation.
+- `expires_at` (String) RFC3339 expiration timestamp for the invitation. Defaults to a Daytona-assigned expiry when not set.
 
 ### Read-Only
 
