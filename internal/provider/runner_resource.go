@@ -53,7 +53,7 @@ func (r *RunnerResource) Metadata(ctx context.Context, req resource.MetadataRequ
 
 func (r *RunnerResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Daytona custom runner registration. Daytona exposes custom runner create/list/update/delete only when organization infrastructure is enabled for the organization.",
+		MarkdownDescription: "Manages a Daytona custom runner registration. **Experimental / self-hosted only:** the runner create/update/delete endpoints are not served by the managed Daytona cloud (`app.daytona.io` returns HTTP 404). They only work against self-hosted Daytona deployments where organization infrastructure (custom runner management) is enabled.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:            true,

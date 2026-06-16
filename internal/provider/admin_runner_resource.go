@@ -73,7 +73,7 @@ func (r *AdminRunnerResource) Metadata(ctx context.Context, req resource.Metadat
 
 func (r *AdminRunnerResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Daytona runner using Daytona admin APIs.",
+		MarkdownDescription: "Manages a Daytona runner using Daytona admin APIs. **Experimental / self-hosted only:** the admin runner endpoints are not served by the managed Daytona cloud (`app.daytona.io` returns HTTP 404) and require a self-hosted Daytona deployment with admin access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:            true,

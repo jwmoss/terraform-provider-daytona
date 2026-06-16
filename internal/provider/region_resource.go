@@ -50,7 +50,7 @@ func (r *RegionResource) Metadata(ctx context.Context, req resource.MetadataRequ
 
 func (r *RegionResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Daytona customer region.",
+		MarkdownDescription: "Manages a Daytona customer region. **Experimental / self-hosted only:** the region create/update/delete endpoints are not served by the managed Daytona cloud (`app.daytona.io` returns HTTP 404) and only work against self-hosted Daytona deployments where region management is enabled.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:            true,

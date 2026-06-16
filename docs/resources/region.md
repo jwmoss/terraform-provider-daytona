@@ -3,12 +3,12 @@
 page_title: "daytona_region Resource - daytona"
 subcategory: ""
 description: |-
-  Manages a Daytona customer region.
+  Manages a Daytona customer region. Experimental / self-hosted only: the region create/update/delete endpoints are not served by the managed Daytona cloud (app.daytona.io returns HTTP 404) and only work against self-hosted Daytona deployments where region management is enabled.
 ---
 
 # daytona_region (Resource)
 
-Manages a Daytona customer region.
+Manages a Daytona customer region. **Experimental / self-hosted only:** the region create/update/delete endpoints are not served by the managed Daytona cloud (`app.daytona.io` returns HTTP 404) and only work against self-hosted Daytona deployments where region management is enabled.
 
 ## Example Usage
 

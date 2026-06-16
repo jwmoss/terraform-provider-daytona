@@ -3,12 +3,12 @@
 page_title: "daytona_organization_otel_config Resource - daytona"
 subcategory: ""
 description: |-
-  Manages OpenTelemetry export configuration for a Daytona organization.
+  Manages OpenTelemetry export configuration for a Daytona organization. Platform-admin / self-hosted only: the managed Daytona cloud rejects this endpoint for an organization owner (HTTP 401); it requires platform-admin credentials or a self-hosted deployment.
 ---
 
 # daytona_organization_otel_config (Resource)
 
-Manages OpenTelemetry export configuration for a Daytona organization.
+Manages OpenTelemetry export configuration for a Daytona organization. **Platform-admin / self-hosted only:** the managed Daytona cloud rejects this endpoint for an organization owner (HTTP 401); it requires platform-admin credentials or a self-hosted deployment.
 
 ## Example Usage
 

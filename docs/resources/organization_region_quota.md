@@ -3,12 +3,12 @@
 page_title: "daytona_organization_region_quota Resource - daytona"
 subcategory: ""
 description: |-
-  Manages an existing Daytona organization region quota. Daytona's organization API exposes update and usage readback for these quotas, but not create or delete; destroying this resource only removes Terraform state and does not delete or reset the quota.
+  Manages an existing Daytona organization region quota. Daytona's organization API exposes update and usage readback for these quotas, but not create or delete; destroying this resource only removes Terraform state and does not delete or reset the quota. Platform-admin / self-hosted only: the managed Daytona cloud rejects the quota update endpoint for an organization owner (HTTP 401); it requires platform-admin credentials or a self-hosted deployment.
 ---
 
 # daytona_organization_region_quota (Resource)
 
-Manages an existing Daytona organization region quota. Daytona's organization API exposes update and usage readback for these quotas, but not create or delete; destroying this resource only removes Terraform state and does not delete or reset the quota.
+Manages an existing Daytona organization region quota. Daytona's organization API exposes update and usage readback for these quotas, but not create or delete; destroying this resource only removes Terraform state and does not delete or reset the quota. **Platform-admin / self-hosted only:** the managed Daytona cloud rejects the quota update endpoint for an organization owner (HTTP 401); it requires platform-admin credentials or a self-hosted deployment.
 
 ## Example Usage
 

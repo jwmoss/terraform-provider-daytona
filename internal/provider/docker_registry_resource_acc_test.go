@@ -27,27 +27,47 @@ func TestAccDockerRegistryResource_basic(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDockerRegistryResourceConfig(name),
+				// Create with project unset, exercising the optional/empty mapping.
+				Config: testAccDockerRegistryResourceConfig(name, "terraform", ""),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("daytona_docker_registry.test", "id"),
 					resource.TestCheckResourceAttr("daytona_docker_registry.test", "name", name),
 					resource.TestCheckResourceAttr("daytona_docker_registry.test", "url", "registry.example.com"),
 					resource.TestCheckResourceAttr("daytona_docker_registry.test", "username", "terraform"),
+					resource.TestCheckNoResourceAttr("daytona_docker_registry.test", "project"),
 				),
+			},
+			{
+				// Update username and set project to confirm in-place update works.
+				Config: testAccDockerRegistryResourceConfig(name, "terraform-updated", "team-namespace"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("daytona_docker_registry.test", "username", "terraform-updated"),
+					resource.TestCheckResourceAttr("daytona_docker_registry.test", "project", "team-namespace"),
+				),
+			},
+			{
+				ResourceName:            "daytona_docker_registry.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"password"},
 			},
 		},
 	})
 }
 
-func testAccDockerRegistryResourceConfig(name string) string {
+func testAccDockerRegistryResourceConfig(name, username, project string) string {
+	projectLine := ""
+	if project != "" {
+		projectLine = fmt.Sprintf("  project  = %q\n", project)
+	}
 	return fmt.Sprintf(`
 provider "daytona" {}
 
 resource "daytona_docker_registry" "test" {
   name     = %[1]q
   url      = "registry.example.com"
-  username = "terraform"
+  username = %[2]q
   password = "tf-acc-placeholder-password"
-}
-`, name)
+%[3]s}
+`, name, username, projectLine)
 }

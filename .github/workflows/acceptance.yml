@@ -41,5 +41,14 @@ jobs:
         env:
           TF_ACC: "1"
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
+          # The CI key carries write:registries, so exercise the Docker registry
+          # resource. Tests gated behind other DAYTONA_ACC_* flags stay opt-in:
+          #   DAYTONA_ACC_SNAPSHOT_BUILD - builds a real image (slow/cost)
+          #   DAYTONA_ACC_SELF_HOSTED / _ADMIN - region/runner/admin (cloud 404s)
+          #   DAYTONA_ACC_ORG_ADMIN - otel/quota (cloud 401s for org owners)
+          #   DAYTONA_ACC_INVITE - sends a real invitation email
+          # Organization-management resources require an access token (JWT) and are
+          # skipped here; see issue #3.
+          DAYTONA_ACC_REGISTRY: "1"
         run: go test -v -run TestAcc ./internal/provider/
         timeout-minutes: 20

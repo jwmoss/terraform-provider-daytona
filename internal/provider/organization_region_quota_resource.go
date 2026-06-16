@@ -75,7 +75,7 @@ func (r *OrganizationRegionQuotaResource) Metadata(ctx context.Context, req reso
 
 func (r *OrganizationRegionQuotaResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages an existing Daytona organization region quota. Daytona's organization API exposes update and usage readback for these quotas, but not create or delete; destroying this resource only removes Terraform state and does not delete or reset the quota.",
+		MarkdownDescription: "Manages an existing Daytona organization region quota. Daytona's organization API exposes update and usage readback for these quotas, but not create or delete; destroying this resource only removes Terraform state and does not delete or reset the quota. **Platform-admin / self-hosted only:** the managed Daytona cloud rejects the quota update endpoint for an organization owner (HTTP 401); it requires platform-admin credentials or a self-hosted deployment.",
 		Attributes:          organizationRegionQuotaResourceAttributes("Quota identifier in `organization_id:region_id:sandbox_class` format."),
 	}
 }

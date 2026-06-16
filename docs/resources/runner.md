@@ -3,12 +3,12 @@
 page_title: "daytona_runner Resource - daytona"
 subcategory: ""
 description: |-
-  Manages a Daytona custom runner registration. Daytona exposes custom runner create/list/update/delete only when organization infrastructure is enabled for the organization.
+  Manages a Daytona custom runner registration. Experimental / self-hosted only: the runner create/update/delete endpoints are not served by the managed Daytona cloud (app.daytona.io returns HTTP 404). They only work against self-hosted Daytona deployments where organization infrastructure (custom runner management) is enabled.
 ---
 
 # daytona_runner (Resource)
 
-Manages a Daytona custom runner registration. Daytona exposes custom runner create/list/update/delete only when organization infrastructure is enabled for the organization.
+Manages a Daytona custom runner registration. **Experimental / self-hosted only:** the runner create/update/delete endpoints are not served by the managed Daytona cloud (`app.daytona.io` returns HTTP 404). They only work against self-hosted Daytona deployments where organization infrastructure (custom runner management) is enabled.
 
 ## Example Usage
 

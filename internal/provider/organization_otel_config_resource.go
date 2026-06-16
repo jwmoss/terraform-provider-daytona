@@ -39,7 +39,7 @@ func (r *OrganizationOtelConfigResource) Metadata(ctx context.Context, req resou
 
 func (r *OrganizationOtelConfigResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages OpenTelemetry export configuration for a Daytona organization.",
+		MarkdownDescription: "Manages OpenTelemetry export configuration for a Daytona organization. **Platform-admin / self-hosted only:** the managed Daytona cloud rejects this endpoint for an organization owner (HTTP 401); it requires platform-admin credentials or a self-hosted deployment.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:            true,

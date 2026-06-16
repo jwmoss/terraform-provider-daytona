@@ -3,12 +3,12 @@
 page_title: "daytona_admin_runner Resource - daytona"
 subcategory: ""
 description: |-
-  Manages a Daytona runner using Daytona admin APIs.
+  Manages a Daytona runner using Daytona admin APIs. Experimental / self-hosted only: the admin runner endpoints are not served by the managed Daytona cloud (app.daytona.io returns HTTP 404) and require a self-hosted Daytona deployment with admin access.
 ---
 
 # daytona_admin_runner (Resource)
 
-Manages a Daytona runner using Daytona admin APIs.
+Manages a Daytona runner using Daytona admin APIs. **Experimental / self-hosted only:** the admin runner endpoints are not served by the managed Daytona cloud (`app.daytona.io` returns HTTP 404) and require a self-hosted Daytona deployment with admin access.
 
 ## Example Usage
 
