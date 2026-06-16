@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	apiclient "github.com/daytonaio/daytona/libs/api-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -42,11 +43,15 @@ type sandboxResourceModel struct {
 	Target              types.String `tfsdk:"target"`
 	CPU                 types.Int64  `tfsdk:"cpu"`
 	GPU                 types.Int64  `tfsdk:"gpu"`
+	GPUType             types.String `tfsdk:"gpu_type"`
+	GPUTypes            types.List   `tfsdk:"gpu_types"`
 	Memory              types.Int64  `tfsdk:"memory"`
 	Disk                types.Int64  `tfsdk:"disk"`
 	AutoStopInterval    types.Int64  `tfsdk:"auto_stop_interval"`
 	AutoArchiveInterval types.Int64  `tfsdk:"auto_archive_interval"`
 	AutoDeleteInterval  types.Int64  `tfsdk:"auto_delete_interval"`
+	Volumes             types.List   `tfsdk:"volumes"`
+	BuildInfo           types.Object `tfsdk:"build_info"`
 	LinkedSandbox       types.String `tfsdk:"linked_sandbox"`
 	DesiredState        types.String `tfsdk:"desired_state"`
 	State               types.String `tfsdk:"state"`
@@ -54,6 +59,7 @@ type sandboxResourceModel struct {
 	ToolboxProxyURL     types.String `tfsdk:"toolbox_proxy_url"`
 	CreatedAt           types.String `tfsdk:"created_at"`
 	UpdatedAt           types.String `tfsdk:"updated_at"`
+	LastActivityAt      types.String `tfsdk:"last_activity_at"`
 	ErrorReason         types.String `tfsdk:"error_reason"`
 }
 
@@ -112,11 +118,15 @@ func (r *SandboxResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"target":                optionalComputedReplaceStringAttribute("Target region where the sandbox is created."),
 			"cpu":                   optionalComputedInt64Attribute("CPU cores allocated to the sandbox."),
 			"gpu":                   optionalComputedReplaceInt64Attribute("GPU units allocated to the sandbox."),
+			"gpu_type":              computedStringAttribute("GPU type assigned to the sandbox, when assigned."),
+			"gpu_types":             replaceStringListAttribute(fmt.Sprintf("Ordered preferred GPU types for the sandbox scheduler. Supported values are: %s.", strings.Join(gpuTypeValues(), ", "))),
 			"memory":                optionalComputedInt64Attribute("Memory allocated to the sandbox in GB."),
 			"disk":                  optionalComputedInt64Attribute("Disk allocated to the sandbox in GB."),
 			"auto_stop_interval":    optionalComputedInt64Attribute("Auto-stop interval in minutes. Use 0 to disable."),
 			"auto_archive_interval": optionalComputedInt64Attribute("Auto-archive interval in minutes."),
 			"auto_delete_interval":  optionalComputedInt64Attribute("Auto-delete interval in minutes. Negative values disable auto-delete."),
+			"volumes":               sandboxVolumesAttribute(),
+			"build_info":            buildInfoAttribute("Build information used to create a Dockerfile-backed sandbox."),
 			"linked_sandbox":        replaceStringAttribute("Existing sandbox ID or name to link the new sandbox to."),
 			"desired_state": schema.StringAttribute{
 				Optional:            true,
@@ -141,6 +151,10 @@ func (r *SandboxResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"updated_at": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Sandbox update timestamp.",
+			},
+			"last_activity_at": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Sandbox last activity timestamp, when available.",
 			},
 			"error_reason": schema.StringAttribute{
 				Computed:            true,
@@ -491,6 +505,13 @@ func expandCreateSandbox(ctx context.Context, data sandboxResourceModel) (apicli
 	if value := optionalInt32(data.GPU); value != nil {
 		createSandbox.SetGpu(*value)
 	}
+	gpuTypes, diags := expandGPUTypes(ctx, data.GPUTypes)
+	if diags.HasError() {
+		return *createSandbox, fmt.Errorf("invalid gpu_types")
+	}
+	if len(gpuTypes) > 0 {
+		createSandbox.SetGpuType(gpuTypes)
+	}
 	if value := optionalInt32(data.Memory); value != nil {
 		createSandbox.SetMemory(*value)
 	}
@@ -508,6 +529,22 @@ func expandCreateSandbox(ctx context.Context, data sandboxResourceModel) (apicli
 	}
 	if value := optionalString(data.LinkedSandbox); value != nil {
 		createSandbox.SetLinkedSandbox(*value)
+	}
+
+	volumes, diags := expandSandboxVolumes(ctx, data.Volumes)
+	if diags.HasError() {
+		return *createSandbox, fmt.Errorf("invalid volumes")
+	}
+	if len(volumes) > 0 {
+		createSandbox.SetVolumes(volumes)
+	}
+
+	buildInfo, diags := expandCreateBuildInfo(ctx, data.BuildInfo)
+	if diags.HasError() {
+		return *createSandbox, fmt.Errorf("invalid build_info")
+	}
+	if buildInfo != nil {
+		createSandbox.SetBuildInfo(*buildInfo)
 	}
 
 	env, diags := stringMap(ctx, data.Env)
@@ -565,6 +602,8 @@ func flattenSandbox(ctx context.Context, sandbox *apiclient.Sandbox, prior sandb
 	prior.Memory = types.Int64Value(int64(sandbox.Memory))
 	prior.Disk = types.Int64Value(int64(sandbox.Disk))
 	prior.ToolboxProxyURL = types.StringValue(sandbox.ToolboxProxyUrl)
+	prior.Volumes = flattenSandboxVolumes(sandbox.Volumes, prior.Volumes)
+	prior.BuildInfo = flattenBuildInfo(ctx, sandbox.BuildInfo, prior.BuildInfo)
 
 	if sandbox.Snapshot != nil {
 		prior.Snapshot = types.StringValue(*sandbox.Snapshot)
@@ -600,6 +639,19 @@ func flattenSandbox(ctx context.Context, sandbox *apiclient.Sandbox, prior sandb
 		prior.ErrorReason = types.StringValue(*sandbox.ErrorReason)
 	} else {
 		prior.ErrorReason = types.StringNull()
+	}
+	if sandbox.GpuType != nil {
+		prior.GPUType = types.StringValue(string(*sandbox.GpuType))
+	} else {
+		prior.GPUType = types.StringNull()
+	}
+	if prior.GPUTypes.IsUnknown() {
+		prior.GPUTypes = types.ListNull(types.StringType)
+	}
+	if sandbox.LastActivityAt != nil {
+		prior.LastActivityAt = types.StringValue(*sandbox.LastActivityAt)
+	} else {
+		prior.LastActivityAt = types.StringNull()
 	}
 	if sandbox.AutoStopInterval != nil {
 		prior.AutoStopInterval = types.Int64Value(int64(*sandbox.AutoStopInterval))

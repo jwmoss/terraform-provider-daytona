@@ -32,11 +32,13 @@ resource "daytona_sandbox" "example" {
 - `auto_archive_interval` (Number) Auto-archive interval in minutes.
 - `auto_delete_interval` (Number) Auto-delete interval in minutes. Negative values disable auto-delete.
 - `auto_stop_interval` (Number) Auto-stop interval in minutes. Use 0 to disable.
+- `build_info` (Attributes) Build information used to create a Dockerfile-backed sandbox. (see [below for nested schema](#nestedatt--build_info))
 - `cpu` (Number) CPU cores allocated to the sandbox.
 - `desired_state` (String) Optional desired lifecycle state: `started`, `stopped`, or `archived`.
 - `disk` (Number) Disk allocated to the sandbox in GB.
 - `env` (Map of String, Sensitive) Environment variables for the sandbox.
 - `gpu` (Number) GPU units allocated to the sandbox.
+- `gpu_types` (List of String) Ordered preferred GPU types for the sandbox scheduler. Supported values are: H100, RTX-PRO-6000.
 - `labels` (Map of String) Labels for the sandbox.
 - `linked_sandbox` (String) Existing sandbox ID or name to link the new sandbox to.
 - `memory` (Number) Memory allocated to the sandbox in GB.
@@ -47,17 +49,47 @@ resource "daytona_sandbox" "example" {
 - `snapshot` (String) Snapshot ID or name used to create the sandbox.
 - `target` (String) Target region where the sandbox is created.
 - `user` (String) User associated with the sandbox project.
+- `volumes` (Attributes List) Persistent volumes mounted into the sandbox at create time. (see [below for nested schema](#nestedatt--volumes))
 
 ### Read-Only
 
 - `created_at` (String) Sandbox creation timestamp.
 - `error_reason` (String) Sandbox error reason, when available.
+- `gpu_type` (String) GPU type assigned to the sandbox, when assigned.
 - `id` (String) Daytona sandbox ID.
+- `last_activity_at` (String) Sandbox last activity timestamp, when available.
 - `organization_id` (String) Daytona organization ID that owns the sandbox.
 - `runner_id` (String) Runner ID hosting the sandbox, when assigned.
 - `state` (String) Current sandbox state.
 - `toolbox_proxy_url` (String) Toolbox proxy URL for the sandbox.
 - `updated_at` (String) Sandbox update timestamp.
+
+<a id="nestedatt--build_info"></a>
+### Nested Schema for `build_info`
+
+Optional:
+
+- `context_hashes` (List of String) Context hashes used for the build.
+- `dockerfile_content` (String) Dockerfile content used to build the sandbox or snapshot.
+
+Read-Only:
+
+- `created_at` (String) Build metadata creation timestamp.
+- `snapshot_ref` (String) Snapshot reference produced by the build.
+- `updated_at` (String) Build metadata update timestamp.
+
+
+<a id="nestedatt--volumes"></a>
+### Nested Schema for `volumes`
+
+Required:
+
+- `mount_path` (String) Absolute path where the volume is mounted in the sandbox.
+- `volume_id` (String) Daytona volume ID or name to mount.
+
+Optional:
+
+- `subpath` (String) Optional subpath within the volume to mount.
 
 ## Import
 

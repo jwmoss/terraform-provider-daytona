@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	apiclient "github.com/daytonaio/daytona/libs/api-client-go"
@@ -34,8 +35,11 @@ type snapshotResourceModel struct {
 	Entrypoint     types.List   `tfsdk:"entrypoint"`
 	CPU            types.Int64  `tfsdk:"cpu"`
 	GPU            types.Int64  `tfsdk:"gpu"`
+	GPUType        types.String `tfsdk:"gpu_type"`
+	GPUTypes       types.List   `tfsdk:"gpu_types"`
 	Memory         types.Int64  `tfsdk:"memory"`
 	Disk           types.Int64  `tfsdk:"disk"`
+	BuildInfo      types.Object `tfsdk:"build_info"`
 	RegionID       types.String `tfsdk:"region_id"`
 	RegionIDs      types.List   `tfsdk:"region_ids"`
 	SandboxClass   types.String `tfsdk:"sandbox_class"`
@@ -75,11 +79,14 @@ func (r *SnapshotResource) Schema(ctx context.Context, req resource.SchemaReques
 				MarkdownDescription: "Daytona organization ID that owns the snapshot.",
 			},
 			"image_name":    replaceStringAttribute("Image name used to build the snapshot."),
-			"entrypoint":    replaceStringListAttribute("Entrypoint command for the snapshot."),
+			"entrypoint":    optionalComputedReplaceStringListAttribute("Entrypoint command for the snapshot."),
 			"cpu":           optionalComputedReplaceInt64Attribute("CPU cores allocated to sandboxes created from this snapshot. Defaults to a Daytona-assigned value when not set."),
 			"gpu":           optionalComputedReplaceInt64Attribute("GPU units allocated to sandboxes created from this snapshot. Defaults to a Daytona-assigned value when not set."),
+			"gpu_type":      computedStringAttribute("GPU type assigned to the snapshot, when assigned."),
+			"gpu_types":     replaceStringListAttribute(fmt.Sprintf("Ordered preferred GPU types for sandboxes created from this snapshot. Supported values are: %s.", strings.Join(gpuTypeValues(), ", "))),
 			"memory":        optionalComputedReplaceInt64Attribute("Memory allocated to sandboxes created from this snapshot in GB. Defaults to a Daytona-assigned value when not set."),
 			"disk":          optionalComputedReplaceInt64Attribute("Disk allocated to sandboxes created from this snapshot in GB. Defaults to a Daytona-assigned value when not set."),
+			"build_info":    buildInfoAttribute("Build information used to create a Dockerfile-backed snapshot."),
 			"region_id":     replaceStringAttribute("Region ID where the snapshot will be available."),
 			"sandbox_class": optionalComputedReplaceStringAttribute("Sandbox class for sandboxes created from this snapshot. Defaults to a Daytona-assigned class when not set."),
 			"region_ids":    computedStringListAttribute("Region IDs where the snapshot is available."),
@@ -100,6 +107,19 @@ func replaceStringListAttribute(description string) schema.ListAttribute {
 		Optional:            true,
 		MarkdownDescription: description,
 		PlanModifiers: []planmodifier.List{
+			listplanmodifier.RequiresReplace(),
+		},
+	}
+}
+
+func optionalComputedReplaceStringListAttribute(description string) schema.ListAttribute {
+	return schema.ListAttribute{
+		ElementType:         types.StringType,
+		Optional:            true,
+		Computed:            true,
+		MarkdownDescription: description,
+		PlanModifiers: []planmodifier.List{
+			listplanmodifier.UseStateForUnknown(),
 			listplanmodifier.RequiresReplace(),
 		},
 	}
@@ -169,11 +189,27 @@ func (r *SnapshotResource) Create(ctx context.Context, req resource.CreateReques
 	if value := optionalInt32(data.GPU); value != nil {
 		createSnapshot.SetGpu(*value)
 	}
+	gpuTypes, diags := expandGPUTypes(ctx, data.GPUTypes)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if len(gpuTypes) > 0 {
+		createSnapshot.SetGpuType(gpuTypes)
+	}
 	if value := optionalInt32(data.Memory); value != nil {
 		createSnapshot.SetMemory(*value)
 	}
 	if value := optionalInt32(data.Disk); value != nil {
 		createSnapshot.SetDisk(*value)
+	}
+	buildInfo, diags := expandCreateBuildInfo(ctx, data.BuildInfo)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if buildInfo != nil {
+		createSnapshot.SetBuildInfo(*buildInfo)
 	}
 
 	entrypoint, diags := stringList(ctx, data.Entrypoint)
@@ -265,13 +301,23 @@ func flattenSnapshot(ctx context.Context, snapshot *apiclient.SnapshotDto, prior
 	prior.UpdatedAt = types.StringValue(snapshot.UpdatedAt.Format(time.RFC3339))
 	prior.Entrypoint = listStringValue(ctx, snapshot.Entrypoint)
 	prior.RegionIDs = listStringValue(ctx, snapshot.RegionIds)
+	prior.BuildInfo = flattenBuildInfo(ctx, snapshot.BuildInfo, prior.BuildInfo)
+
+	if snapshot.GpuType != nil {
+		prior.GPUType = types.StringValue(string(*snapshot.GpuType))
+	} else {
+		prior.GPUType = types.StringNull()
+	}
+	if prior.GPUTypes.IsUnknown() {
+		prior.GPUTypes = types.ListNull(types.StringType)
+	}
 
 	if snapshot.OrganizationId != nil {
 		prior.OrganizationID = types.StringValue(*snapshot.OrganizationId)
 	} else {
 		prior.OrganizationID = types.StringNull()
 	}
-	if snapshot.ImageName != nil {
+	if snapshot.ImageName != nil && *snapshot.ImageName != "" {
 		prior.ImageName = types.StringValue(*snapshot.ImageName)
 	} else if prior.ImageName.IsUnknown() {
 		prior.ImageName = types.StringNull()

@@ -28,10 +28,12 @@ resource "daytona_snapshot" "example" {
 
 ### Optional
 
+- `build_info` (Attributes) Build information used to create a Dockerfile-backed snapshot. (see [below for nested schema](#nestedatt--build_info))
 - `cpu` (Number) CPU cores allocated to sandboxes created from this snapshot. Defaults to a Daytona-assigned value when not set.
 - `disk` (Number) Disk allocated to sandboxes created from this snapshot in GB. Defaults to a Daytona-assigned value when not set.
 - `entrypoint` (List of String) Entrypoint command for the snapshot.
 - `gpu` (Number) GPU units allocated to sandboxes created from this snapshot. Defaults to a Daytona-assigned value when not set.
+- `gpu_types` (List of String) Ordered preferred GPU types for sandboxes created from this snapshot. Supported values are: H100, RTX-PRO-6000.
 - `image_name` (String) Image name used to build the snapshot.
 - `memory` (Number) Memory allocated to sandboxes created from this snapshot in GB. Defaults to a Daytona-assigned value when not set.
 - `region_id` (String) Region ID where the snapshot will be available.
@@ -42,6 +44,7 @@ resource "daytona_snapshot" "example" {
 - `created_at` (String) Snapshot creation timestamp.
 - `error_reason` (String) Snapshot error reason, when available.
 - `general` (Boolean) Whether this is a general Daytona snapshot.
+- `gpu_type` (String) GPU type assigned to the snapshot, when assigned.
 - `id` (String) Daytona snapshot ID.
 - `organization_id` (String) Daytona organization ID that owns the snapshot.
 - `ref` (String) Snapshot reference.
@@ -49,6 +52,20 @@ resource "daytona_snapshot" "example" {
 - `size` (String) Snapshot size, when available.
 - `state` (String) Current snapshot state.
 - `updated_at` (String) Snapshot update timestamp.
+
+<a id="nestedatt--build_info"></a>
+### Nested Schema for `build_info`
+
+Optional:
+
+- `context_hashes` (List of String) Context hashes used for the build.
+- `dockerfile_content` (String) Dockerfile content used to build the sandbox or snapshot.
+
+Read-Only:
+
+- `created_at` (String) Build metadata creation timestamp.
+- `snapshot_ref` (String) Snapshot reference produced by the build.
+- `updated_at` (String) Build metadata update timestamp.
 
 ## Import
 

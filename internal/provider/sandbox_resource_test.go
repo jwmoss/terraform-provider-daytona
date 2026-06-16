@@ -2,10 +2,18 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 func TestSandboxResourceSchemaServerDefaults(t *testing.T) {
@@ -60,6 +68,200 @@ func TestSandboxResourceSchemaServerDefaults(t *testing.T) {
 	}
 	if !hasInt64PlanModifierDescription(gpuAttr, "If the value of this attribute changes, Terraform will destroy and recreate the resource.") {
 		t.Fatal("expected gpu to require replacement on changes")
+	}
+
+	if _, ok := schemaResp.Schema.Attributes["gpu_type"].(schema.StringAttribute); !ok {
+		t.Fatalf("expected gpu_type to be a string attribute, got %T", schemaResp.Schema.Attributes["gpu_type"])
+	}
+	if _, ok := schemaResp.Schema.Attributes["gpu_types"].(schema.ListAttribute); !ok {
+		t.Fatalf("expected gpu_types to be a list attribute, got %T", schemaResp.Schema.Attributes["gpu_types"])
+	}
+	if _, ok := schemaResp.Schema.Attributes["volumes"].(schema.ListNestedAttribute); !ok {
+		t.Fatalf("expected volumes to be a list nested attribute, got %T", schemaResp.Schema.Attributes["volumes"])
+	}
+	if _, ok := schemaResp.Schema.Attributes["build_info"].(schema.SingleNestedAttribute); !ok {
+		t.Fatalf("expected build_info to be a single nested attribute, got %T", schemaResp.Schema.Attributes["build_info"])
+	}
+	if _, ok := schemaResp.Schema.Attributes["last_activity_at"].(schema.StringAttribute); !ok {
+		t.Fatalf("expected last_activity_at to be a string attribute, got %T", schemaResp.Schema.Attributes["last_activity_at"])
+	}
+}
+
+func TestSandboxResourceCreateRequestAdvancedFields(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	var createPayload map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.EscapedPath()
+		if r.Header.Get("Authorization") != "Bearer test-token" {
+			t.Fatalf("expected bearer token header, got %q", r.Header.Get("Authorization"))
+		}
+		if r.Header.Get(organizationHeader) != "org-1" {
+			t.Fatalf("expected organization header %q, got %q", "org-1", r.Header.Get(organizationHeader))
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("failed reading body: %s", err)
+		}
+		if err := json.Unmarshal(body, &createPayload); err != nil {
+			t.Fatalf("failed unmarshalling create payload %q: %s", string(body), err)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"id": "sandbox-1",
+			"organizationId": "org-1",
+			"name": "sandbox",
+			"snapshot": "daytona-small",
+			"user": "daytona",
+			"env": {},
+			"labels": {"team": "platform"},
+			"public": false,
+			"networkBlockAll": false,
+			"target": "us",
+			"cpu": 2,
+			"gpu": 1,
+			"gpuType": "H100",
+			"memory": 4,
+			"disk": 10,
+			"state": "started",
+			"autoStopInterval": 15,
+			"autoArchiveInterval": 0,
+			"autoDeleteInterval": -1,
+			"volumes": [
+				{"volumeId": "vol-1", "mountPath": "/workspace/data", "subpath": "datasets"}
+			],
+			"buildInfo": {
+				"dockerfileContent": "FROM ubuntu:24.04\nRUN echo hi\n",
+				"contextHashes": ["hash-1"],
+				"createdAt": "2026-06-01T12:00:00Z",
+				"updatedAt": "2026-06-01T12:00:00Z",
+				"snapshotRef": "snapshot-ref-1"
+			},
+			"createdAt": "2026-06-01T12:00:00Z",
+			"updatedAt": "2026-06-01T12:05:00Z",
+			"lastActivityAt": "2026-06-01T12:06:00Z",
+			"toolboxProxyUrl": "https://toolbox.example"
+		}`))
+	}))
+	defer server.Close()
+
+	volumeType := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"volume_id":  tftypes.String,
+		"mount_path": tftypes.String,
+		"subpath":    tftypes.String,
+	}}
+	buildInfoType := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"dockerfile_content": tftypes.String,
+		"context_hashes":     tftypes.List{ElementType: tftypes.String},
+		"created_at":         tftypes.String,
+		"updated_at":         tftypes.String,
+		"snapshot_ref":       tftypes.String,
+	}}
+
+	sandboxResource := &SandboxResource{client: newDaytonaClient(server.URL, "test-token", "org-1", "test")}
+	plan := resourcePlan(t, sandboxResource, map[string]tftypes.Value{
+		"name":     tftypes.NewValue(tftypes.String, "sandbox"),
+		"snapshot": tftypes.NewValue(tftypes.String, "daytona-small"),
+		"gpu":      tftypes.NewValue(tftypes.Number, 1),
+		"gpu_types": tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, []tftypes.Value{
+			tftypes.NewValue(tftypes.String, "H100"),
+			tftypes.NewValue(tftypes.String, "RTX-PRO-6000"),
+		}),
+		"volumes": tftypes.NewValue(tftypes.List{ElementType: volumeType}, []tftypes.Value{
+			tftypes.NewValue(volumeType, map[string]tftypes.Value{
+				"volume_id":  tftypes.NewValue(tftypes.String, "vol-1"),
+				"mount_path": tftypes.NewValue(tftypes.String, "/workspace/data"),
+				"subpath":    tftypes.NewValue(tftypes.String, "datasets"),
+			}),
+		}),
+		"build_info": tftypes.NewValue(buildInfoType, map[string]tftypes.Value{
+			"dockerfile_content": tftypes.NewValue(tftypes.String, "FROM ubuntu:24.04\nRUN echo hi\n"),
+			"context_hashes": tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, []tftypes.Value{
+				tftypes.NewValue(tftypes.String, "hash-1"),
+			}),
+			"created_at":   tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
+			"updated_at":   tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
+			"snapshot_ref": tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
+		}),
+	})
+
+	createResp := resource.CreateResponse{State: tfsdk.State{Schema: plan.Schema}}
+	sandboxResource.Create(context.Background(), resource.CreateRequest{Plan: plan}, &createResp)
+	if createResp.Diagnostics.HasError() {
+		t.Fatalf("unexpected create diagnostics: %s", createResp.Diagnostics)
+	}
+
+	if gotMethod != http.MethodPost {
+		t.Fatalf("expected method %s, got %s", http.MethodPost, gotMethod)
+	}
+	if gotPath != "/sandbox" {
+		t.Fatalf("expected path %q, got %q", "/sandbox", gotPath)
+	}
+	if createPayload["name"] != "sandbox" {
+		t.Fatalf("expected payload name sandbox, got %#v", createPayload["name"])
+	}
+
+	gpuTypes, ok := createPayload["gpuType"].([]any)
+	if !ok || len(gpuTypes) != 2 || gpuTypes[0] != "H100" || gpuTypes[1] != "RTX-PRO-6000" {
+		t.Fatalf("expected payload gpuType [H100 RTX-PRO-6000], got %#v", createPayload["gpuType"])
+	}
+
+	volumes, ok := createPayload["volumes"].([]any)
+	if !ok || len(volumes) != 1 {
+		t.Fatalf("expected one payload volume, got %#v", createPayload["volumes"])
+	}
+	volume, ok := volumes[0].(map[string]any)
+	if !ok || volume["volumeId"] != "vol-1" || volume["mountPath"] != "/workspace/data" || volume["subpath"] != "datasets" {
+		t.Fatalf("expected payload volume with id/path/subpath, got %#v", volumes[0])
+	}
+
+	buildInfo, ok := createPayload["buildInfo"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected payload buildInfo object, got %#v", createPayload["buildInfo"])
+	}
+	if buildInfo["dockerfileContent"] != "FROM ubuntu:24.04\nRUN echo hi\n" {
+		t.Fatalf("expected payload Dockerfile content, got %#v", buildInfo["dockerfileContent"])
+	}
+	contextHashes, ok := buildInfo["contextHashes"].([]any)
+	if !ok || len(contextHashes) != 1 || contextHashes[0] != "hash-1" {
+		t.Fatalf("expected payload contextHashes [hash-1], got %#v", buildInfo["contextHashes"])
+	}
+
+	var data sandboxResourceModel
+	createResp.State.Get(context.Background(), &data)
+	if data.ID.ValueString() != "sandbox-1" {
+		t.Fatalf("expected state ID sandbox-1, got %q", data.ID.ValueString())
+	}
+	if data.GPUType.ValueString() != "H100" {
+		t.Fatalf("expected state gpu_type H100, got %q", data.GPUType.ValueString())
+	}
+	if data.LastActivityAt.ValueString() != "2026-06-01T12:06:00Z" {
+		t.Fatalf("expected state last_activity_at, got %q", data.LastActivityAt.ValueString())
+	}
+
+	var stateVolumes []sandboxVolumeModel
+	diags := data.Volumes.ElementsAs(context.Background(), &stateVolumes, false)
+	if diags.HasError() {
+		t.Fatalf("unexpected volumes diagnostics: %s", diags)
+	}
+	if len(stateVolumes) != 1 || stateVolumes[0].VolumeID.ValueString() != "vol-1" || stateVolumes[0].Subpath.ValueString() != "datasets" {
+		t.Fatalf("expected state volume vol-1/datasets, got %#v", stateVolumes)
+	}
+
+	var stateBuildInfo buildInfoModel
+	diags = data.BuildInfo.As(context.Background(), &stateBuildInfo, basetypes.ObjectAsOptions{})
+	if diags.HasError() {
+		t.Fatalf("unexpected build_info diagnostics: %s", diags)
+	}
+	if stateBuildInfo.SnapshotRef.ValueString() != "snapshot-ref-1" {
+		t.Fatalf("expected state build_info snapshot_ref snapshot-ref-1, got %q", stateBuildInfo.SnapshotRef.ValueString())
+	}
+	if stateBuildInfo.CreatedAt.ValueString() != time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC).Format(time.RFC3339) {
+		t.Fatalf("expected state build_info created_at, got %q", stateBuildInfo.CreatedAt.ValueString())
 	}
 }
 

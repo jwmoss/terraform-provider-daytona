@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
@@ -22,6 +23,7 @@ func TestFlattenSnapshot(t *testing.T) {
 	ctx := context.Background()
 	createdAt := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
 	updatedAt := time.Date(2026, 6, 2, 13, 30, 0, 0, time.UTC)
+	gpuType := apiclient.GPUTYPE_H100
 	size := float32(2.5)
 	snapshot := &apiclient.SnapshotDto{
 		Id:             "snap-1",
@@ -34,14 +36,22 @@ func TestFlattenSnapshot(t *testing.T) {
 		Entrypoint:     []string{"sleep", "infinity"},
 		Cpu:            2,
 		Gpu:            1,
+		GpuType:        &gpuType,
 		Mem:            4,
 		Disk:           10,
 		ErrorReason:    *apiclient.NewNullableString(apiclient.PtrString("boom")),
 		CreatedAt:      createdAt,
 		UpdatedAt:      updatedAt,
-		RegionIds:      []string{"us"},
-		Ref:            apiclient.PtrString("ref-1"),
-		SandboxClass:   apiclient.PtrString("container"),
+		BuildInfo: &apiclient.BuildInfo{
+			DockerfileContent: apiclient.PtrString("FROM ubuntu:24.04\n"),
+			ContextHashes:     []string{"hash-1"},
+			CreatedAt:         createdAt,
+			UpdatedAt:         updatedAt,
+			SnapshotRef:       "snapshot-ref-1",
+		},
+		RegionIds:    []string{"us"},
+		Ref:          apiclient.PtrString("ref-1"),
+		SandboxClass: apiclient.PtrString("container"),
 	}
 
 	flattened := flattenSnapshot(ctx, snapshot, snapshotResourceModel{ID: types.StringUnknown()})
@@ -67,6 +77,9 @@ func TestFlattenSnapshot(t *testing.T) {
 	if flattened.CPU.ValueInt64() != 2 || flattened.GPU.ValueInt64() != 1 || flattened.Memory.ValueInt64() != 4 || flattened.Disk.ValueInt64() != 10 {
 		t.Fatalf("expected cpu/gpu/memory/disk 2/1/4/10, got %d/%d/%d/%d",
 			flattened.CPU.ValueInt64(), flattened.GPU.ValueInt64(), flattened.Memory.ValueInt64(), flattened.Disk.ValueInt64())
+	}
+	if flattened.GPUType.ValueString() != "H100" {
+		t.Fatalf("expected gpu_type H100, got %q", flattened.GPUType.ValueString())
 	}
 	if flattened.Size.ValueString() != "2.5" {
 		t.Fatalf("expected size 2.5, got %q", flattened.Size.ValueString())
@@ -103,6 +116,18 @@ func TestFlattenSnapshot(t *testing.T) {
 	}
 	if len(regionIDs) != 1 || regionIDs[0] != "us" {
 		t.Fatalf("expected region_ids [us], got %#v", regionIDs)
+	}
+
+	var buildInfo buildInfoModel
+	diags = flattened.BuildInfo.As(ctx, &buildInfo, basetypes.ObjectAsOptions{})
+	if diags.HasError() {
+		t.Fatalf("unexpected build_info diagnostics: %s", diags)
+	}
+	if buildInfo.DockerfileContent.ValueString() != "FROM ubuntu:24.04\n" {
+		t.Fatalf("expected build_info Dockerfile content, got %q", buildInfo.DockerfileContent.ValueString())
+	}
+	if buildInfo.SnapshotRef.ValueString() != "snapshot-ref-1" {
+		t.Fatalf("expected build_info snapshot_ref snapshot-ref-1, got %q", buildInfo.SnapshotRef.ValueString())
 	}
 
 	priorName := types.StringValue("untouched")
@@ -194,9 +219,17 @@ func TestSnapshotResourceCreateRequest(t *testing.T) {
 			"entrypoint": ["sleep", "infinity"],
 			"cpu": 2,
 			"gpu": 0,
+			"gpuType": "H100",
 			"mem": 4,
 			"disk": 10,
 			"errorReason": null,
+			"buildInfo": {
+				"dockerfileContent": "FROM ubuntu:24.04\nRUN echo hi\n",
+				"contextHashes": ["hash-1"],
+				"createdAt": "2026-06-01T12:00:00Z",
+				"updatedAt": "2026-06-01T12:00:00Z",
+				"snapshotRef": "snapshot-ref-1"
+			},
 			"createdAt": "2026-06-01T12:00:00Z",
 			"updatedAt": "2026-06-01T12:00:00Z",
 			"lastUsedAt": null,
@@ -214,10 +247,29 @@ func TestSnapshotResourceCreateRequest(t *testing.T) {
 			tftypes.NewValue(tftypes.String, "sleep"),
 			tftypes.NewValue(tftypes.String, "infinity"),
 		}),
-		"cpu":           tftypes.NewValue(tftypes.Number, 2),
-		"gpu":           tftypes.NewValue(tftypes.Number, nil),
-		"memory":        tftypes.NewValue(tftypes.Number, 4),
-		"disk":          tftypes.NewValue(tftypes.Number, 10),
+		"cpu": tftypes.NewValue(tftypes.Number, 2),
+		"gpu": tftypes.NewValue(tftypes.Number, nil),
+		"gpu_types": tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, []tftypes.Value{
+			tftypes.NewValue(tftypes.String, "H100"),
+			tftypes.NewValue(tftypes.String, "RTX-PRO-6000"),
+		}),
+		"memory": tftypes.NewValue(tftypes.Number, 4),
+		"disk":   tftypes.NewValue(tftypes.Number, 10),
+		"build_info": tftypes.NewValue(tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+			"dockerfile_content": tftypes.String,
+			"context_hashes":     tftypes.List{ElementType: tftypes.String},
+			"created_at":         tftypes.String,
+			"updated_at":         tftypes.String,
+			"snapshot_ref":       tftypes.String,
+		}}, map[string]tftypes.Value{
+			"dockerfile_content": tftypes.NewValue(tftypes.String, "FROM ubuntu:24.04\nRUN echo hi\n"),
+			"context_hashes": tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, []tftypes.Value{
+				tftypes.NewValue(tftypes.String, "hash-1"),
+			}),
+			"created_at":   tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
+			"updated_at":   tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
+			"snapshot_ref": tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
+		}),
 		"region_id":     tftypes.NewValue(tftypes.String, "us"),
 		"sandbox_class": tftypes.NewValue(tftypes.String, "container"),
 	})
@@ -253,9 +305,24 @@ func TestSnapshotResourceCreateRequest(t *testing.T) {
 	if _, present := createPayload["gpu"]; present {
 		t.Fatalf("expected null gpu to be omitted from payload, got %#v", createPayload["gpu"])
 	}
+	gpuTypes, ok := createPayload["gpuType"].([]any)
+	if !ok || len(gpuTypes) != 2 || gpuTypes[0] != "H100" || gpuTypes[1] != "RTX-PRO-6000" {
+		t.Fatalf("expected payload gpuType [H100 RTX-PRO-6000], got %#v", createPayload["gpuType"])
+	}
 	entrypoint, ok := createPayload["entrypoint"].([]any)
 	if !ok || len(entrypoint) != 2 || entrypoint[0] != "sleep" || entrypoint[1] != "infinity" {
 		t.Fatalf("expected payload entrypoint [sleep infinity], got %#v", createPayload["entrypoint"])
+	}
+	buildInfo, ok := createPayload["buildInfo"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected payload buildInfo object, got %#v", createPayload["buildInfo"])
+	}
+	if buildInfo["dockerfileContent"] != "FROM ubuntu:24.04\nRUN echo hi\n" {
+		t.Fatalf("expected payload Dockerfile content, got %#v", buildInfo["dockerfileContent"])
+	}
+	contextHashes, ok := buildInfo["contextHashes"].([]any)
+	if !ok || len(contextHashes) != 1 || contextHashes[0] != "hash-1" {
+		t.Fatalf("expected payload contextHashes [hash-1], got %#v", buildInfo["contextHashes"])
 	}
 
 	var data snapshotResourceModel
