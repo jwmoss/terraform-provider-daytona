@@ -2,7 +2,6 @@ package provider
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
@@ -15,9 +14,6 @@ import (
 // and destroys everything. Requires the org API (JWT).
 func TestAccOrganizationOtelConfigResource_basic(t *testing.T) {
 	testAccPreCheckAccessToken(t)
-	if os.Getenv("DAYTONA_ACC_ORG_ADMIN") == "" {
-		t.Skip("set DAYTONA_ACC_ORG_ADMIN=1 to run the OTel config acceptance test (the managed cloud returns HTTP 401 for an org owner; needs platform-admin or self-hosted Daytona)")
-	}
 
 	suffix := acctest.RandStringFromCharSet(8, acctest.CharSetAlphaNum)
 

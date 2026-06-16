@@ -39,7 +39,7 @@ func (r *OrganizationOtelConfigResource) Metadata(ctx context.Context, req resou
 
 func (r *OrganizationOtelConfigResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages OpenTelemetry export configuration for a Daytona organization. **Platform-admin / self-hosted only:** the managed Daytona cloud rejects this endpoint for an organization owner (HTTP 401); it requires platform-admin credentials or a self-hosted deployment.",
+		MarkdownDescription: "Manages OpenTelemetry export configuration for a Daytona organization. Requires the organization API (an access token / JWT); API-key auth is rejected. Header values are write-only: Daytona redacts them on read, so the configured values are kept in state and drift in header values cannot be detected.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:            true,
@@ -110,13 +110,10 @@ func (r *OrganizationOtelConfigResource) Create(ctx context.Context, req resourc
 		return
 	}
 
-	config, httpResp, err := r.client.api.OrganizationsAPI.GetOrganizationOtelConfig(ctx, data.OrganizationID.ValueString()).Execute()
-	if err != nil {
-		addAPIError(&resp.Diagnostics, "Unable to read Daytona organization OpenTelemetry configuration", "read organization OpenTelemetry configuration", httpResp, err)
-		return
-	}
-
-	data = flattenOrganizationOtelConfig(ctx, config, data)
+	// The write succeeded; persist the configured values. The dedicated otel-config
+	// read endpoint is not authorized for an organization owner and the organization
+	// object redacts header values, so there is nothing to read back here.
+	data.ID = data.OrganizationID
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -128,13 +125,22 @@ func (r *OrganizationOtelConfigResource) Read(ctx context.Context, req resource.
 		return
 	}
 
-	config, httpResp, err := r.client.api.OrganizationsAPI.GetOrganizationOtelConfig(ctx, data.OrganizationID.ValueString()).Execute()
+	// The dedicated otel-config read endpoint is not authorized for an organization
+	// owner, so read the configuration from the organization object, which carries it
+	// (with header values redacted).
+	organization, httpResp, err := r.client.api.OrganizationsAPI.GetOrganization(ctx, data.OrganizationID.ValueString()).Execute()
 	if isNotFound(httpResp) {
 		resp.State.RemoveResource(ctx)
 		return
 	}
 	if err != nil {
-		addAPIError(&resp.Diagnostics, "Unable to read Daytona organization OpenTelemetry configuration", "read organization OpenTelemetry configuration", httpResp, err)
+		addAPIError(&resp.Diagnostics, "Unable to read Daytona organization", "read organization", httpResp, err)
+		return
+	}
+
+	config, ok := organization.GetOtelConfigOk()
+	if !ok || config == nil {
+		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -163,13 +169,7 @@ func (r *OrganizationOtelConfigResource) Update(ctx context.Context, req resourc
 		return
 	}
 
-	config, httpResp, err := r.client.api.OrganizationsAPI.GetOrganizationOtelConfig(ctx, data.OrganizationID.ValueString()).Execute()
-	if err != nil {
-		addAPIError(&resp.Diagnostics, "Unable to read Daytona organization OpenTelemetry configuration", "read organization OpenTelemetry configuration", httpResp, err)
-		return
-	}
-
-	data = flattenOrganizationOtelConfig(ctx, config, data)
+	data.ID = data.OrganizationID
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -211,16 +211,15 @@ func expandOrganizationOtelConfig(ctx context.Context, data organizationOtelConf
 	return config, true
 }
 
-func flattenOrganizationOtelConfig(ctx context.Context, config *apiclient.OtelConfig, prior organizationOtelConfigResourceModel) organizationOtelConfigResourceModel {
+func flattenOrganizationOtelConfig(_ context.Context, config *apiclient.OtelConfig, prior organizationOtelConfigResourceModel) organizationOtelConfigResourceModel {
 	if config == nil {
 		return prior
 	}
 
 	prior.ID = prior.OrganizationID
 	prior.Endpoint = types.StringValue(config.Endpoint)
-	if config.Headers != nil {
-		prior.Headers = stringMapValue(ctx, config.Headers)
-	}
+	// Header values are redacted by the organization object, so the configured
+	// values already in state are kept rather than overwritten with the redactions.
 
 	return prior
 }

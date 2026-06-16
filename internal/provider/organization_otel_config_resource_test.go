@@ -55,12 +55,18 @@ func TestFlattenOrganizationOtelConfig(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	config := apiclient.NewOtelConfig("https://otel.example.com/v1/traces")
-	config.SetHeaders(map[string]string{"Authorization": "Bearer secret"})
 
+	// The organization object redacts header values, so flatten must take the
+	// endpoint from the API but keep the configured headers already in state rather
+	// than overwriting them with the redactions.
+	config := apiclient.NewOtelConfig("https://otel.example.com/v1/traces")
+	config.SetHeaders(map[string]string{"Authorization": "******"})
+
+	priorHeaders := stringMapValue(ctx, map[string]string{"Authorization": "Bearer secret"})
 	prior := organizationOtelConfigResourceModel{
 		ID:             types.StringUnknown(),
 		OrganizationID: types.StringValue("org-1"),
+		Headers:        priorHeaders,
 	}
 	flattened := flattenOrganizationOtelConfig(ctx, config, prior)
 
@@ -70,22 +76,8 @@ func TestFlattenOrganizationOtelConfig(t *testing.T) {
 	if flattened.Endpoint.ValueString() != "https://otel.example.com/v1/traces" {
 		t.Fatalf("expected endpoint %q, got %q", "https://otel.example.com/v1/traces", flattened.Endpoint.ValueString())
 	}
-	headers := map[string]string{}
-	diags := flattened.Headers.ElementsAs(ctx, &headers, false)
-	if diags.HasError() {
-		t.Fatalf("unexpected headers diagnostics: %s", diags)
-	}
-	if headers["Authorization"] != "Bearer secret" {
-		t.Fatalf("expected Authorization header %q, got %#v", "Bearer secret", headers)
-	}
-
-	priorHeaders := stringMapValue(ctx, map[string]string{"X-Custom": "kept"})
-	withoutHeaders := flattenOrganizationOtelConfig(ctx, apiclient.NewOtelConfig("https://otel.example.com"), organizationOtelConfigResourceModel{
-		OrganizationID: types.StringValue("org-1"),
-		Headers:        priorHeaders,
-	})
-	if !withoutHeaders.Headers.Equal(priorHeaders) {
-		t.Fatalf("expected prior headers to be kept when the API omits them, got %#v", withoutHeaders.Headers)
+	if !flattened.Headers.Equal(priorHeaders) {
+		t.Fatalf("expected configured headers to be kept, got %#v", flattened.Headers)
 	}
 
 	priorEndpoint := types.StringValue("untouched")
@@ -120,9 +112,6 @@ func TestOrganizationOtelConfigResourceCreateRequests(t *testing.T) {
 				t.Fatalf("failed unmarshalling update payload %q: %s", string(body), err)
 			}
 			w.WriteHeader(http.StatusNoContent)
-		case r.Method == http.MethodGet && path == "/organizations/org-1/otel-config":
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"endpoint":"https://otel.example.com/v1/traces","headers":{"Authorization":"Bearer secret"}}`))
 		default:
 			t.Fatalf("unexpected request %s %s", r.Method, path)
 		}
@@ -144,13 +133,13 @@ func TestOrganizationOtelConfigResourceCreateRequests(t *testing.T) {
 		t.Fatalf("unexpected create diagnostics: %s", createResp.Diagnostics)
 	}
 
-	for _, key := range []string{
-		"PUT /organizations/org-1/otel-config",
-		"GET /organizations/org-1/otel-config",
-	} {
-		if requests[key] != 1 {
-			t.Fatalf("expected one %s request, got %d", key, requests[key])
-		}
+	// Create writes the configuration and does not read it back: the dedicated read
+	// endpoint is not authorized for an organization owner.
+	if requests["PUT /organizations/org-1/otel-config"] != 1 {
+		t.Fatalf("expected one PUT request, got %d", requests["PUT /organizations/org-1/otel-config"])
+	}
+	if requests["GET /organizations/org-1/otel-config"] != 0 {
+		t.Fatalf("expected no otel-config GET, got %d", requests["GET /organizations/org-1/otel-config"])
 	}
 
 	if updatePayload["endpoint"] != "https://otel.example.com/v1/traces" {
