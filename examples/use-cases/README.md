@@ -18,6 +18,7 @@ provider-defined actions), so they all work with OpenTofu as well.
 | [ci-service-api-keys](./ci-service-api-keys) | Scoped, expiring API keys for CI systems and service accounts |
 | [agent-platform-bootstrap](./agent-platform-bootstrap) | Composition example: the full durable substrate (registry, golden snapshot, region quota, OpenTelemetry, runtime key) in one apply, with outputs the agent runtime consumes |
 | [aws-runner-fleet](./aws-runner-fleet) | Cross-provider: launch EC2 hosts and register each as a Daytona runner in one apply, feeding the runner key into instance user_data |
+| [azure-runner-fleet](./azure-runner-fleet) | Cross-provider: launch Azure VM hosts and register each as a Daytona runner in one apply, feeding the runner key into cloud-init |
 | [ecr-snapshot-pipeline](./ecr-snapshot-pipeline) | Cross-provider: manage ECR repositories, wire Daytona to pull from them, and define golden snapshots from those images |
 
 Each example authenticates the provider through the standard environment

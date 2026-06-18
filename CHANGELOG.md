@@ -1,3 +1,12 @@
+## 0.7.0 (2026-06-17)
+
+NOTES:
+
+- The provider has moved to the **536Tech** organization and now publishes as `536tech/daytona` on the Terraform Registry (source: `github.com/536tech/terraform-provider-daytona`). Update your `source` from `jwmoss/daytona` to `536tech/daytona`; the `jwmoss/daytona` namespace is deprecated.
+- Release artifacts are now signed with the 536Tech provider signing key (fingerprint `82517EBC5706F5211B8F65F9F0FDD0EDF505625D`). No provider functionality changed in this release.
+- Added the `azure-runner-fleet` use-case example: launch Azure VM hosts and register each as a Daytona runner in one apply, feeding the runner key into cloud-init.
+- Added `docs/cli-vs-terraform.md` describing where this provider adds value versus the Daytona CLI/SDK.
+
 ## 0.6.0 (2026-06-16)
 
 FEATURES:
