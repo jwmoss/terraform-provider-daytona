@@ -177,6 +177,13 @@ func (r *OrganizationRegionQuotaResource) Create(ctx context.Context, req resour
 		return
 	}
 
+	data.ID = organizationRegionQuotaID(data)
+	nullUnknownModelValues(ctx, &data)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	updated, found, httpResp, err := r.readOrganizationRegionQuota(ctx, data)
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to read Daytona organization region quota", "read organization region quota", httpResp, err)
@@ -363,6 +370,10 @@ func importOrganizationRegionQuotaState(ctx context.Context, id string, diags *d
 	diags.Append(setAttribute(ctx, path.Root("organization_id"), parts[0])...)
 	diags.Append(setAttribute(ctx, path.Root("region_id"), parts[1])...)
 	diags.Append(setAttribute(ctx, path.Root("sandbox_class"), parts[2])...)
+}
+
+func organizationRegionQuotaID(data organizationRegionQuotaResourceModel) types.String {
+	return types.StringValue(fmt.Sprintf("%s:%s:%s", data.OrganizationID.ValueString(), data.RegionID.ValueString(), data.SandboxClass.ValueString()))
 }
 
 func (r *OrganizationRegionQuotaResource) applyOrganizationRegionQuota(ctx context.Context, data organizationRegionQuotaResourceModel, diags *diag.Diagnostics) bool {

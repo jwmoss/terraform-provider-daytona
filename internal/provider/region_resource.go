@@ -151,9 +151,19 @@ func (r *RegionResource) Create(ctx context.Context, req resource.CreateRequest,
 		addAPIError(&resp.Diagnostics, "Unable to create Daytona region", "create region", httpResp, err)
 		return
 	}
+	if created == nil {
+		addEmptyAPIResponseError(&resp.Diagnostics, "Empty Daytona region create response", "create region", httpResp)
+		return
+	}
 
 	data.ID = types.StringValue(created.Id)
 	data = flattenRegionCreateResponse(created, data)
+	nullUnknownModelValues(ctx, &data)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	region, httpResp, err := r.client.api.OrganizationsAPI.GetRegionById(ctx, created.Id).Execute()
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to read created Daytona region", "read region", httpResp, err)

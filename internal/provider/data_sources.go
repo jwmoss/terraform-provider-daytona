@@ -118,6 +118,10 @@ func (d *CurrentAPIKeyDataSource) Read(ctx context.Context, req datasource.ReadR
 		addAPIError(&resp.Diagnostics, "Unable to read current Daytona API key", "read current API key", httpResp, err)
 		return
 	}
+	if apiKey == nil {
+		addEmptyAPIResponseError(&resp.Diagnostics, "Empty Daytona current API key response", "read current API key", httpResp)
+		return
+	}
 
 	data := currentAPIKeyDataSourceModel{
 		ID:          types.StringValue(apiKey.Name),
@@ -395,6 +399,10 @@ func (d *collectionDataSource) readItems(ctx context.Context, organizationID typ
 				addAPIError(diags, "Unable to list Daytona sandboxes", "list sandboxes", httpResp, err)
 				return nil, err
 			}
+			if sandboxes == nil {
+				addEmptyAPIResponseError(diags, "Empty Daytona sandboxes response", "list sandboxes", httpResp)
+				return nil, fmt.Errorf("empty Daytona sandboxes response")
+			}
 			for _, sandbox := range sandboxes.Items {
 				item := newCollectionItem()
 				item.ID = types.StringValue(sandbox.Id)
@@ -426,6 +434,10 @@ func (d *collectionDataSource) readItems(ctx context.Context, organizationID typ
 			if err != nil {
 				addAPIError(diags, "Unable to list Daytona snapshots", "list snapshots", httpResp, err)
 				return nil, err
+			}
+			if snapshots == nil {
+				addEmptyAPIResponseError(diags, "Empty Daytona snapshots response", "list snapshots", httpResp)
+				return nil, fmt.Errorf("empty Daytona snapshots response")
 			}
 			for _, snapshot := range snapshots.Items {
 				item := newCollectionItem()

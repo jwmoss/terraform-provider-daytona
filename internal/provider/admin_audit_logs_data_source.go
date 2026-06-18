@@ -158,6 +158,10 @@ func (d *AdminAuditLogsDataSource) Read(ctx context.Context, req datasource.Read
 		addAPIError(&resp.Diagnostics, "Unable to read Daytona admin audit logs", "read admin audit logs", httpResp, err)
 		return
 	}
+	if result == nil {
+		addEmptyAPIResponseError(&resp.Diagnostics, "Empty Daytona admin audit logs response", "read admin audit logs", httpResp)
+		return
+	}
 
 	data.ID = types.StringValue("admin_audit_logs")
 	data.Total = types.Int64Value(int64(result.Total))

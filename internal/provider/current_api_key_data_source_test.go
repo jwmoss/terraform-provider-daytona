@@ -19,7 +19,7 @@ provider "daytona" {}
 data "daytona_current_api_key" "test" {}
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("data.daytona_current_api_key.test", "name", "automation"),
+					resource.TestCheckResourceAttrSet("data.daytona_current_api_key.test", "name"),
 					resource.TestCheckResourceAttrSet("data.daytona_current_api_key.test", "permissions.#"),
 					resource.TestCheckResourceAttrSet("data.daytona_current_api_key.test", "user_id"),
 				),

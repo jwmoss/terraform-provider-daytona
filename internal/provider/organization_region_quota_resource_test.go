@@ -12,7 +12,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 func TestOrganizationRegionQuotaResourceSchema(t *testing.T) {
@@ -222,6 +224,65 @@ func TestOrganizationRegionQuotaResourceUpdateAndRead(t *testing.T) {
 	}
 	if read.MaxDiskPerNonEphemeralSandbox.ValueFloat64() != 75 {
 		t.Fatalf("expected max disk per non-ephemeral sandbox 75, got %f", read.MaxDiskPerNonEphemeralSandbox.ValueFloat64())
+	}
+}
+
+func TestOrganizationRegionQuotaResourceCreatePersistsStateBeforeReadback(t *testing.T) {
+	t.Parallel()
+
+	requests := map[string]int{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer test-token" {
+			t.Fatalf("expected bearer token header, got %q", r.Header.Get("Authorization"))
+		}
+		if r.Header.Get(organizationHeader) != "org-header" {
+			t.Fatalf("expected organization header %q, got %q", "org-header", r.Header.Get(organizationHeader))
+		}
+
+		path := r.URL.EscapedPath()
+		requests[r.Method+" "+path]++
+		switch {
+		case r.Method == http.MethodPatch && path == "/organizations/org-1/quota/region-1":
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodGet && path == "/organizations/org-1/usage":
+			http.Error(w, "temporary read failure", http.StatusInternalServerError)
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, path)
+		}
+	}))
+	defer server.Close()
+
+	quotaResource := &OrganizationRegionQuotaResource{client: newDaytonaClient(server.URL, "test-token", "org-header", "test")}
+	quotaSchema := resourceTestSchema(t, quotaResource)
+	plan := resourceTestPlan(t, quotaSchema, map[string]tftypes.Value{
+		"organization_id":    tftypes.NewValue(tftypes.String, "org-1"),
+		"region_id":          tftypes.NewValue(tftypes.String, "region-1"),
+		"sandbox_class":      tftypes.NewValue(tftypes.String, "container"),
+		"total_cpu_quota":    tftypes.NewValue(tftypes.Number, 8),
+		"total_memory_quota": tftypes.NewValue(tftypes.Number, 16),
+		"total_disk_quota":   tftypes.NewValue(tftypes.Number, 100),
+		"total_gpu_quota":    tftypes.NewValue(tftypes.Number, 2),
+	})
+
+	createResp := resource.CreateResponse{State: tfsdk.State{Schema: quotaSchema}}
+	quotaResource.Create(context.Background(), resource.CreateRequest{Plan: plan}, &createResp)
+	if !createResp.Diagnostics.HasError() {
+		t.Fatal("expected create diagnostics from failed readback")
+	}
+
+	var data organizationRegionQuotaResourceModel
+	diags := createResp.State.Get(context.Background(), &data)
+	if diags.HasError() {
+		t.Fatalf("unexpected state diagnostics: %s", diags)
+	}
+	if data.ID.ValueString() != "org-1:region-1:container" {
+		t.Fatalf("expected persisted state ID org-1:region-1:container, got %q", data.ID.ValueString())
+	}
+	if data.TotalCPUQuota.ValueFloat64() != 8 {
+		t.Fatalf("expected persisted total CPU quota 8, got %f", data.TotalCPUQuota.ValueFloat64())
+	}
+	if requests["PATCH /organizations/org-1/quota/region-1"] != 1 || requests["GET /organizations/org-1/usage"] == 0 {
+		t.Fatalf("expected update and readback requests, got %#v", requests)
 	}
 }
 

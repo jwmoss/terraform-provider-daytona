@@ -76,6 +76,10 @@ func (d *OrganizationOtelConfigDataSource) Read(ctx context.Context, req datasou
 		addAPIError(&resp.Diagnostics, "Unable to read Daytona organization OpenTelemetry configuration", "read organization OpenTelemetry configuration", httpResp, err)
 		return
 	}
+	if config == nil {
+		addEmptyAPIResponseError(&resp.Diagnostics, "Empty Daytona organization OpenTelemetry configuration response", "read organization OpenTelemetry configuration", httpResp)
+		return
+	}
 
 	data.ID = data.OrganizationID
 	data.Endpoint = types.StringValue(config.Endpoint)

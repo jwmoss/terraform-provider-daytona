@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -85,6 +86,88 @@ func TestSandboxResourceSchemaServerDefaults(t *testing.T) {
 	if _, ok := schemaResp.Schema.Attributes["last_activity_at"].(schema.StringAttribute); !ok {
 		t.Fatalf("expected last_activity_at to be a string attribute, got %T", schemaResp.Schema.Attributes["last_activity_at"])
 	}
+}
+
+func TestSandboxResourceUpdateClearsIntervals(t *testing.T) {
+	t.Parallel()
+
+	requests := map[string]int{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.EscapedPath()
+		requests[r.Method+" "+path]++
+		w.Header().Set("Content-Type", "application/json")
+
+		switch {
+		case r.Method == http.MethodPost && path == "/sandbox/sandbox-1/autostop/0":
+			_, _ = w.Write([]byte(sandboxIntervalJSON(60, 120)))
+		case r.Method == http.MethodPost && path == "/sandbox/sandbox-1/autoarchive/0":
+			_, _ = w.Write([]byte(sandboxIntervalJSON(0, 120)))
+		case r.Method == http.MethodPost && path == "/sandbox/sandbox-1/autodelete/-1":
+			_, _ = w.Write([]byte(sandboxIntervalJSON(0, -1)))
+		case r.Method == http.MethodGet && path == "/sandbox/sandbox-1":
+			_, _ = w.Write([]byte(sandboxIntervalJSON(0, -1)))
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, path)
+		}
+	}))
+	defer server.Close()
+
+	sandboxResource := &SandboxResource{client: newDaytonaClient(server.URL, "test-token", "org-1", "test")}
+	sandboxSchema := resourceTestSchema(t, sandboxResource)
+	plan := resourceTestPlan(t, sandboxSchema, map[string]tftypes.Value{
+		"id":                    tftypes.NewValue(tftypes.String, "sandbox-1"),
+		"auto_stop_interval":    tftypes.NewValue(tftypes.Number, nil),
+		"auto_archive_interval": tftypes.NewValue(tftypes.Number, nil),
+		"auto_delete_interval":  tftypes.NewValue(tftypes.Number, nil),
+	})
+	state := resourceTestState(t, sandboxSchema, map[string]tftypes.Value{
+		"id":                    tftypes.NewValue(tftypes.String, "sandbox-1"),
+		"auto_stop_interval":    tftypes.NewValue(tftypes.Number, 15),
+		"auto_archive_interval": tftypes.NewValue(tftypes.Number, 60),
+		"auto_delete_interval":  tftypes.NewValue(tftypes.Number, 120),
+	})
+
+	updateResp := resource.UpdateResponse{State: tfsdk.State{Schema: sandboxSchema}}
+	sandboxResource.Update(context.Background(), resource.UpdateRequest{Plan: plan, State: state}, &updateResp)
+	if updateResp.Diagnostics.HasError() {
+		t.Fatalf("unexpected update diagnostics: %s", updateResp.Diagnostics)
+	}
+
+	for _, key := range []string{
+		"POST /sandbox/sandbox-1/autostop/0",
+		"POST /sandbox/sandbox-1/autoarchive/0",
+		"POST /sandbox/sandbox-1/autodelete/-1",
+		"GET /sandbox/sandbox-1",
+	} {
+		if requests[key] != 1 {
+			t.Fatalf("expected one %s request, got %d; all requests: %#v", key, requests[key], requests)
+		}
+	}
+}
+
+func sandboxIntervalJSON(autoArchive, autoDelete int) string {
+	return fmt.Sprintf(`{
+		"id": "sandbox-1",
+		"organizationId": "org-1",
+		"name": "sandbox",
+		"user": "daytona",
+		"env": {},
+		"labels": {},
+		"public": false,
+		"networkBlockAll": false,
+		"target": "us",
+		"cpu": 2,
+		"gpu": 0,
+		"memory": 4,
+		"disk": 10,
+		"state": "started",
+		"autoStopInterval": 0,
+		"autoArchiveInterval": %d,
+		"autoDeleteInterval": %d,
+		"createdAt": "2026-06-01T12:00:00Z",
+		"updatedAt": "2026-06-01T12:05:00Z",
+		"toolboxProxyUrl": "https://toolbox.example"
+	}`, autoArchive, autoDelete)
 }
 
 func TestSandboxResourceCreateRequestAdvancedFields(t *testing.T) {

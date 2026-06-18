@@ -132,6 +132,10 @@ func (d *ConfigDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		addAPIError(&resp.Diagnostics, "Unable to read Daytona configuration", "read configuration", httpResp, err)
 		return
 	}
+	if config == nil {
+		addEmptyAPIResponseError(&resp.Diagnostics, "Empty Daytona configuration response", "read configuration", httpResp)
+		return
+	}
 
 	data := configDataSourceModel{
 		ID:                     types.StringValue("config"),
@@ -213,6 +217,10 @@ func (d *CurrentUserDataSource) Read(ctx context.Context, req datasource.ReadReq
 	user, httpResp, err := d.client.api.UsersAPI.GetAuthenticatedUser(ctx).Execute()
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to read Daytona current user", "read current user", httpResp, err)
+		return
+	}
+	if user == nil {
+		addEmptyAPIResponseError(&resp.Diagnostics, "Empty Daytona current user response", "read current user", httpResp)
 		return
 	}
 
@@ -406,6 +414,10 @@ func (d *OrganizationUsageDataSource) Read(ctx context.Context, req datasource.R
 		addAPIError(&resp.Diagnostics, "Unable to read Daytona organization usage", "read organization usage", httpResp, err)
 		return
 	}
+	if usage == nil {
+		addEmptyAPIResponseError(&resp.Diagnostics, "Empty Daytona organization usage response", "read organization usage", httpResp)
+		return
+	}
 
 	data.ID = data.OrganizationID
 	data.TotalSnapshotQuota = float64Value(usage.TotalSnapshotQuota)
@@ -570,6 +582,10 @@ func (d *OrganizationAuditLogsDataSource) Read(ctx context.Context, req datasour
 		addAPIError(&resp.Diagnostics, "Unable to read Daytona organization audit logs", "read organization audit logs", httpResp, err)
 		return
 	}
+	if result == nil {
+		addEmptyAPIResponseError(&resp.Diagnostics, "Empty Daytona organization audit logs response", "read organization audit logs", httpResp)
+		return
+	}
 
 	data.ID = types.StringValue(data.OrganizationID.ValueString() + ":audit_logs")
 	data.Total = types.Int64Value(int64(result.Total))
@@ -641,6 +657,10 @@ func (d *JobDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	job, httpResp, err := d.client.api.JobsAPI.GetJob(ctx, data.ID.ValueString()).Execute()
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to read Daytona job", "read job", httpResp, err)
+		return
+	}
+	if job == nil {
+		addEmptyAPIResponseError(&resp.Diagnostics, "Empty Daytona job response", "read job", httpResp)
 		return
 	}
 
@@ -752,6 +772,10 @@ func (d *JobsDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	result, httpResp, err := request.Execute()
 	if err != nil {
 		addAPIError(&resp.Diagnostics, "Unable to list Daytona jobs", "list jobs", httpResp, err)
+		return
+	}
+	if result == nil {
+		addEmptyAPIResponseError(&resp.Diagnostics, "Empty Daytona jobs response", "list jobs", httpResp)
 		return
 	}
 

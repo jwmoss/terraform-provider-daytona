@@ -316,6 +316,10 @@ func (r *SandboxResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
+	plannedAutoStopInterval := plan.AutoStopInterval
+	plannedAutoArchiveInterval := plan.AutoArchiveInterval
+	plannedAutoDeleteInterval := plan.AutoDeleteInterval
+
 	if !plan.Public.Equal(state.Public) {
 		sandbox, response, err := r.client.api.SandboxAPI.UpdatePublicStatus(ctx, state.ID.ValueString(), plan.Public.ValueBool()).Execute()
 		if err != nil {
@@ -401,37 +405,31 @@ func (r *SandboxResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
-	if !plan.AutoStopInterval.Equal(state.AutoStopInterval) {
-		if value := optionalInt32(plan.AutoStopInterval); value != nil {
-			sandbox, response, err := r.client.api.SandboxAPI.SetAutostopInterval(ctx, state.ID.ValueString(), float32(*value)).Execute()
-			if err != nil {
-				addAPIError(&resp.Diagnostics, "Unable to update Daytona sandbox auto-stop interval", "set sandbox auto-stop interval", response, err)
-				return
-			}
-			plan = flattenSandbox(ctx, sandbox, plan)
+	if value, ok := sandboxIntervalUpdateValue(plannedAutoStopInterval, state.AutoStopInterval, 0); ok {
+		sandbox, response, err := r.client.api.SandboxAPI.SetAutostopInterval(ctx, state.ID.ValueString(), value).Execute()
+		if err != nil {
+			addAPIError(&resp.Diagnostics, "Unable to update Daytona sandbox auto-stop interval", "set sandbox auto-stop interval", response, err)
+			return
 		}
+		plan = flattenSandbox(ctx, sandbox, plan)
 	}
 
-	if !plan.AutoArchiveInterval.Equal(state.AutoArchiveInterval) {
-		if value := optionalInt32(plan.AutoArchiveInterval); value != nil {
-			sandbox, response, err := r.client.api.SandboxAPI.SetAutoArchiveInterval(ctx, state.ID.ValueString(), float32(*value)).Execute()
-			if err != nil {
-				addAPIError(&resp.Diagnostics, "Unable to update Daytona sandbox auto-archive interval", "set sandbox auto-archive interval", response, err)
-				return
-			}
-			plan = flattenSandbox(ctx, sandbox, plan)
+	if value, ok := sandboxIntervalUpdateValue(plannedAutoArchiveInterval, state.AutoArchiveInterval, 0); ok {
+		sandbox, response, err := r.client.api.SandboxAPI.SetAutoArchiveInterval(ctx, state.ID.ValueString(), value).Execute()
+		if err != nil {
+			addAPIError(&resp.Diagnostics, "Unable to update Daytona sandbox auto-archive interval", "set sandbox auto-archive interval", response, err)
+			return
 		}
+		plan = flattenSandbox(ctx, sandbox, plan)
 	}
 
-	if !plan.AutoDeleteInterval.Equal(state.AutoDeleteInterval) {
-		if value := optionalInt32(plan.AutoDeleteInterval); value != nil {
-			sandbox, response, err := r.client.api.SandboxAPI.SetAutoDeleteInterval(ctx, state.ID.ValueString(), float32(*value)).Execute()
-			if err != nil {
-				addAPIError(&resp.Diagnostics, "Unable to update Daytona sandbox auto-delete interval", "set sandbox auto-delete interval", response, err)
-				return
-			}
-			plan = flattenSandbox(ctx, sandbox, plan)
+	if value, ok := sandboxIntervalUpdateValue(plannedAutoDeleteInterval, state.AutoDeleteInterval, -1); ok {
+		sandbox, response, err := r.client.api.SandboxAPI.SetAutoDeleteInterval(ctx, state.ID.ValueString(), value).Execute()
+		if err != nil {
+			addAPIError(&resp.Diagnostics, "Unable to update Daytona sandbox auto-delete interval", "set sandbox auto-delete interval", response, err)
+			return
 		}
+		plan = flattenSandbox(ctx, sandbox, plan)
 	}
 
 	if !plan.DesiredState.Equal(state.DesiredState) && !plan.DesiredState.IsNull() && plan.DesiredState.ValueString() != "" {
@@ -451,6 +449,16 @@ func (r *SandboxResource) Update(ctx context.Context, req resource.UpdateRequest
 	plan = flattenSandbox(ctx, current, plan)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func sandboxIntervalUpdateValue(plan, state types.Int64, clearValue int32) (float32, bool) {
+	if plan.Equal(state) || plan.IsUnknown() {
+		return 0, false
+	}
+	if value := optionalInt32(plan); value != nil {
+		return float32(*value), true
+	}
+	return float32(clearValue), true
 }
 
 func (r *SandboxResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

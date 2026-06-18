@@ -205,3 +205,11 @@ func addAPIError(diags *diag.Diagnostics, summary, operation string, resp *http.
 
 	diags.AddError(summary, detail)
 }
+
+func addEmptyAPIResponseError(diags *diag.Diagnostics, summary, operation string, resp *http.Response) {
+	detail := fmt.Sprintf("Daytona %s returned a successful response without a response body.", operation)
+	if resp != nil {
+		detail = fmt.Sprintf("%s (HTTP %d)", detail, resp.StatusCode)
+	}
+	diags.AddError(summary, detail)
+}

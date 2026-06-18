@@ -8,7 +8,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 func TestRegionResourceSchemaRotationFields(t *testing.T) {
@@ -145,5 +147,64 @@ func TestRegionResourceCredentialRotations(t *testing.T) {
 		if requests[path] != 1 {
 			t.Fatalf("expected one request to %s, got %d", path, requests[path])
 		}
+	}
+}
+
+func TestRegionResourceCreatePersistsStateBeforeReadback(t *testing.T) {
+	t.Parallel()
+
+	requests := map[string]int{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer test-token" {
+			t.Fatalf("expected bearer token header, got %q", r.Header.Get("Authorization"))
+		}
+		if r.Header.Get(organizationHeader) != "org-1" {
+			t.Fatalf("expected organization header %q, got %q", "org-1", r.Header.Get(organizationHeader))
+		}
+
+		path := r.URL.EscapedPath()
+		requests[r.Method+" "+path]++
+		switch {
+		case r.Method == http.MethodPost && path == "/regions":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{
+				"id": "region-1",
+				"proxyApiKey": "proxy-key",
+				"sshGatewayApiKey": "ssh-key",
+				"snapshotManagerUsername": "snapshot-user",
+				"snapshotManagerPassword": "snapshot-pass"
+			}`))
+		case r.Method == http.MethodGet && path == "/regions/region-1":
+			http.Error(w, "temporary read failure", http.StatusInternalServerError)
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, path)
+		}
+	}))
+	defer server.Close()
+
+	regionResource := &RegionResource{client: newDaytonaClient(server.URL, "test-token", "org-1", "test")}
+	plan := resourcePlan(t, regionResource, map[string]tftypes.Value{
+		"name": tftypes.NewValue(tftypes.String, "region"),
+	})
+
+	createResp := resource.CreateResponse{State: tfsdk.State{Schema: plan.Schema}}
+	regionResource.Create(context.Background(), resource.CreateRequest{Plan: plan}, &createResp)
+	if !createResp.Diagnostics.HasError() {
+		t.Fatal("expected create diagnostics from failed readback")
+	}
+
+	var data regionResourceModel
+	diags := createResp.State.Get(context.Background(), &data)
+	if diags.HasError() {
+		t.Fatalf("unexpected state diagnostics: %s", diags)
+	}
+	if data.ID.ValueString() != "region-1" {
+		t.Fatalf("expected persisted state ID region-1, got %q", data.ID.ValueString())
+	}
+	if data.ProxyAPIKey.ValueString() != "proxy-key" {
+		t.Fatalf("expected persisted proxy API key, got %q", data.ProxyAPIKey.ValueString())
+	}
+	if requests["POST /regions"] != 1 || requests["GET /regions/region-1"] == 0 {
+		t.Fatalf("expected create and readback requests, got %#v", requests)
 	}
 }
