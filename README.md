@@ -1,8 +1,8 @@
 # Terraform Provider for Daytona
 
-[![Tests](https://github.com/jwmoss/terraform-provider-daytona/actions/workflows/test.yml/badge.svg)](https://github.com/jwmoss/terraform-provider-daytona/actions/workflows/test.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/jwmoss/terraform-provider-daytona)](https://goreportcard.com/report/github.com/jwmoss/terraform-provider-daytona)
-[![Latest Release](https://img.shields.io/github/v/release/jwmoss/terraform-provider-daytona)](https://github.com/jwmoss/terraform-provider-daytona/releases)
+[![Tests](https://github.com/536tech/terraform-provider-daytona/actions/workflows/test.yml/badge.svg)](https://github.com/536tech/terraform-provider-daytona/actions/workflows/test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/536tech/terraform-provider-daytona)](https://goreportcard.com/report/github.com/536tech/terraform-provider-daytona)
+[![Latest Release](https://img.shields.io/github/v/release/536tech/terraform-provider-daytona)](https://github.com/536tech/terraform-provider-daytona/releases)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](LICENSE)
 
 This repository contains a Terraform Plugin Framework provider for [Daytona](https://github.com/daytonaio/daytona). It lets teams manage Daytona sandboxes and supporting Daytona infrastructure with the same Terraform workflows they use for AWS, Azure, GCP, and other enterprise platform dependencies.
@@ -34,7 +34,7 @@ intentionally excluded endpoints.
 terraform {
   required_providers {
     daytona = {
-      source = "jwmoss/daytona"
+      source = "536tech/daytona"
     }
   }
 }
@@ -75,12 +75,12 @@ Daytona API keys work for API-key-enabled routes such as current API-key lookup 
 Terraform provider installation uses provider addresses rather than module-style GitHub sources. Until this provider is published to Terraform Registry, install the provider binary from GitHub and point Terraform at the local build:
 
 ```shell
-go install github.com/jwmoss/terraform-provider-daytona@v0.6.0
+go install github.com/536tech/terraform-provider-daytona@v0.7.0
 
 cat > ~/.terraformrc <<EOF
 provider_installation {
   dev_overrides {
-    "jwmoss/daytona" = "$HOME/go/bin"
+    "536tech/daytona" = "$HOME/go/bin"
   }
   direct {}
 }
@@ -93,7 +93,7 @@ Terraform configurations and modules can then use the same provider address show
 terraform {
   required_providers {
     daytona = {
-      source = "jwmoss/daytona"
+      source = "536tech/daytona"
     }
   }
 }
@@ -103,7 +103,7 @@ This repository also includes a reusable module example that can be consumed dir
 
 ```terraform
 module "daytona_sandbox" {
-  source = "github.com/jwmoss/terraform-provider-daytona//examples/modules/daytona-sandbox?ref=v0.6.0"
+  source = "github.com/536tech/terraform-provider-daytona//examples/modules/daytona-sandbox?ref=v0.7.0"
 
   name          = "agent-runtime"
   snapshot      = "daytonaio/sandbox:0.6.0"

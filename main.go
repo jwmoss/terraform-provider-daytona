@@ -5,8 +5,8 @@ import (
 	"flag"
 	"log"
 
+	"github.com/536tech/terraform-provider-daytona/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/jwmoss/terraform-provider-daytona/internal/provider"
 )
 
 var (
@@ -25,7 +25,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.terraform.io/jwmoss/daytona",
+		Address: "registry.terraform.io/536tech/daytona",
 		Debug:   debug,
 	}
 

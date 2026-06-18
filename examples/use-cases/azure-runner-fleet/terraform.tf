@@ -7,7 +7,7 @@ terraform {
       version = "~> 4.0"
     }
     daytona = {
-      source = "jwmoss/daytona"
+      source = "536tech/daytona"
     }
   }
 }

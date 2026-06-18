@@ -21,7 +21,7 @@ band.
 
 ```hcl
 module "governance" {
-  source = "github.com/jwmoss/terraform-provider-daytona//examples/use-cases/organization-governance"
+  source = "github.com/536tech/terraform-provider-daytona//examples/use-cases/organization-governance"
 
   organization_id = "your-org-id"
 

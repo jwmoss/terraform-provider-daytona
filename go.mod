@@ -1,4 +1,4 @@
-module github.com/jwmoss/terraform-provider-daytona
+module github.com/536tech/terraform-provider-daytona
 
 go 1.25.8
 

@@ -3,7 +3,7 @@ terraform {
 
   required_providers {
     daytona = {
-      source = "jwmoss/daytona"
+      source = "536tech/daytona"
     }
   }
 }

@@ -36,7 +36,7 @@ dev override before running the example:
 ```hcl
 provider_installation {
   dev_overrides {
-    "jwmoss/daytona" = "/Users/jwmoss/github/terraform-provider-daytona"
+    "536tech/daytona" = "/Users/jwmoss/github_536tech/terraform-provider-daytona"
   }
 
   direct {}
