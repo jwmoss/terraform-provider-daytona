@@ -30,34 +30,6 @@ data "daytona_regions" "example" {}
 
 Read-Only:
 
-- `assigned_role_ids` (Set of String) Assigned organization role IDs.
-- `created_at` (String) Creation timestamp.
-- `created_by` (String) Creator user ID, when applicable.
-- `default_region_id` (String) Default organization region ID.
-- `description` (String) Object description.
-- `email` (String) Email address, when applicable.
-- `expires_at` (String) Expiration timestamp, when applicable.
 - `id` (String) Object ID.
-- `invited_by` (String) Inviter email address, when applicable.
-- `is_global` (Boolean) Whether the role is a global Daytona role.
-- `last_used_at` (String) Last-used timestamp, when applicable.
 - `name` (String) Object name.
-- `organization_id` (String) Owning organization ID.
-- `organization_name` (String) Owning organization name.
-- `permissions` (Set of String) Assigned permissions.
-- `personal` (Boolean) Whether the organization is personal.
-- `project` (String) Project or namespace, when applicable.
-- `public` (Boolean) Whether the object is public, when applicable.
-- `region` (String) Region name.
-- `region_id` (String) Region ID.
-- `role` (String) Organization member role.
-- `runner_id` (String) Runner ID.
-- `state` (String) Object state.
-- `suspended` (Boolean) Whether the organization is suspended.
-- `target` (String) Target region or environment.
-- `type` (String) Object type.
-- `updated_at` (String) Update timestamp.
-- `url` (String) Object URL, when applicable.
-- `user_id` (String) User ID, when applicable.
-- `username` (String) Username, when applicable.
-- `value` (String, Sensitive) Sensitive or masked object value, when applicable.
+- `state` (String) Object state, when applicable.

@@ -7,8 +7,8 @@ depend on — regions, runners, golden snapshots, registries, volumes, roles,
 quotas, and API keys — are long-lived, drift-prone, and team-owned, which is
 exactly what Terraform is for.
 
-Every example uses only resources and data sources (no Terraform 1.14
-provider-defined actions), so they all work with OpenTofu as well.
+Every example uses only resources and data sources, so they work with Terraform
+and OpenTofu.
 
 | Example | What it manages |
 |---|---|

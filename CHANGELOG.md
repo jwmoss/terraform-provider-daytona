@@ -1,3 +1,16 @@
+## Unreleased
+
+BREAKING CHANGES:
+
+- Removed provider-defined actions and their generated docs/examples.
+- Removed the deprecated raw sandbox and snapshot build-log data sources.
+- Removed the side-effecting sandbox SSH access data source.
+
+NOTES:
+
+- Removed the OpenAPI endpoint coverage matrix and test.
+- Trimmed generic collection and sandbox relationship data source outputs to stable identity fields.
+
 ## 0.9.0 (2026-06-23)
 
 FEATURES:

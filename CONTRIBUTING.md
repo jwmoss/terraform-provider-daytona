@@ -5,7 +5,7 @@ Thanks for your interest in improving the Terraform provider for Daytona.
 ## Requirements
 
 - Go 1.25 or newer
-- Terraform 1.0 or newer; provider-defined actions require Terraform 1.14 or newer
+- Terraform 1.0 or newer
 - [`prek`](https://github.com/j178/prek) for the local git hooks
 
 ## Build
@@ -64,7 +64,7 @@ make generate
 ```
 
 CI fails if generated documentation is out of date, so run this whenever you
-touch a resource, data source, action, or its example.
+touch a resource, data source, or example.
 
 ## Pull requests
 

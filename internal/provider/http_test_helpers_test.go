@@ -1,10 +1,13 @@
 package provider
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 type daytonaHTTPExpectation struct {
@@ -76,4 +79,17 @@ func (r *daytonaHTTPRecorder) record(method, path string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.counts[method+" "+path]++
+}
+
+func terraformValue(t *testing.T, value interface {
+	ToTerraformValue(context.Context) (tftypes.Value, error)
+}) tftypes.Value {
+	t.Helper()
+
+	terraformValue, err := value.ToTerraformValue(context.Background())
+	if err != nil {
+		t.Fatalf("unable to convert value to Terraform value: %s", err)
+	}
+
+	return terraformValue
 }

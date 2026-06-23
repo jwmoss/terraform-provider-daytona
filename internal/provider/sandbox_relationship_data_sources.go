@@ -246,55 +246,13 @@ type sandboxRelationshipDataSourceModel struct {
 	RequestOrganizationID types.String `tfsdk:"request_organization_id"`
 	ID                    types.String `tfsdk:"id"`
 	Name                  types.String `tfsdk:"name"`
-	OrganizationID        types.String `tfsdk:"organization_id"`
-	Snapshot              types.String `tfsdk:"snapshot"`
-	User                  types.String `tfsdk:"user"`
-	Env                   types.Map    `tfsdk:"env"`
-	Labels                types.Map    `tfsdk:"labels"`
-	Public                types.Bool   `tfsdk:"public"`
-	NetworkBlockAll       types.Bool   `tfsdk:"network_block_all"`
-	NetworkAllowList      types.String `tfsdk:"network_allow_list"`
-	Target                types.String `tfsdk:"target"`
-	CPU                   types.Int64  `tfsdk:"cpu"`
-	GPU                   types.Int64  `tfsdk:"gpu"`
-	Memory                types.Int64  `tfsdk:"memory"`
-	Disk                  types.Int64  `tfsdk:"disk"`
-	AutoStopInterval      types.Int64  `tfsdk:"auto_stop_interval"`
-	AutoArchiveInterval   types.Int64  `tfsdk:"auto_archive_interval"`
-	AutoDeleteInterval    types.Int64  `tfsdk:"auto_delete_interval"`
 	State                 types.String `tfsdk:"state"`
-	RunnerID              types.String `tfsdk:"runner_id"`
-	ToolboxProxyURL       types.String `tfsdk:"toolbox_proxy_url"`
-	CreatedAt             types.String `tfsdk:"created_at"`
-	UpdatedAt             types.String `tfsdk:"updated_at"`
-	ErrorReason           types.String `tfsdk:"error_reason"`
 }
 
 type sandboxRelationshipItemModel struct {
-	ID                  types.String `tfsdk:"id"`
-	Name                types.String `tfsdk:"name"`
-	OrganizationID      types.String `tfsdk:"organization_id"`
-	Snapshot            types.String `tfsdk:"snapshot"`
-	User                types.String `tfsdk:"user"`
-	Env                 types.Map    `tfsdk:"env"`
-	Labels              types.Map    `tfsdk:"labels"`
-	Public              types.Bool   `tfsdk:"public"`
-	NetworkBlockAll     types.Bool   `tfsdk:"network_block_all"`
-	NetworkAllowList    types.String `tfsdk:"network_allow_list"`
-	Target              types.String `tfsdk:"target"`
-	CPU                 types.Int64  `tfsdk:"cpu"`
-	GPU                 types.Int64  `tfsdk:"gpu"`
-	Memory              types.Int64  `tfsdk:"memory"`
-	Disk                types.Int64  `tfsdk:"disk"`
-	AutoStopInterval    types.Int64  `tfsdk:"auto_stop_interval"`
-	AutoArchiveInterval types.Int64  `tfsdk:"auto_archive_interval"`
-	AutoDeleteInterval  types.Int64  `tfsdk:"auto_delete_interval"`
-	State               types.String `tfsdk:"state"`
-	RunnerID            types.String `tfsdk:"runner_id"`
-	ToolboxProxyURL     types.String `tfsdk:"toolbox_proxy_url"`
-	CreatedAt           types.String `tfsdk:"created_at"`
-	UpdatedAt           types.String `tfsdk:"updated_at"`
-	ErrorReason         types.String `tfsdk:"error_reason"`
+	ID    types.String `tfsdk:"id"`
+	Name  types.String `tfsdk:"name"`
+	State types.String `tfsdk:"state"`
 }
 
 type sandboxRelationshipCollectionDataSourceModel struct {
@@ -347,7 +305,7 @@ func (d *SandboxParentDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
-	data = flattenSandboxRelationshipDataSource(ctx, parent, data)
+	data = flattenSandboxRelationshipDataSource(parent, data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -394,7 +352,7 @@ func (d *SandboxAncestorsDataSource) Read(ctx context.Context, req datasource.Re
 	}
 
 	data.ID = types.StringValue(data.SandboxIDOrName.ValueString() + ":ancestors")
-	data.Items = flattenSandboxRelationshipItems(ctx, ancestors)
+	data.Items = flattenSandboxRelationshipItems(ancestors)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -444,7 +402,7 @@ func (d *SandboxForksDataSource) Read(ctx context.Context, req datasource.ReadRe
 	}
 
 	data.ID = types.StringValue(data.SandboxIDOrName.ValueString() + ":forks")
-	data.Items = flattenSandboxRelationshipItems(ctx, forks)
+	data.Items = flattenSandboxRelationshipItems(forks)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -542,30 +500,9 @@ func sandboxRelationshipCollectionAttributes(includeDestroyed bool) map[string]s
 
 func sandboxRelationshipComputedAttributes() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
-		"id":                    computedDataSourceStringAttribute("Daytona sandbox ID."),
-		"name":                  computedDataSourceStringAttribute("Sandbox name."),
-		"organization_id":       computedDataSourceStringAttribute("Daytona organization ID that owns the sandbox."),
-		"snapshot":              computedDataSourceStringAttribute("Snapshot ID or name used to create the sandbox."),
-		"user":                  computedDataSourceStringAttribute("User associated with the sandbox project."),
-		"env":                   sensitiveComputedDataSourceStringMapAttribute("Environment variables for the sandbox."),
-		"labels":                computedDataSourceStringMapAttribute("Labels for the sandbox."),
-		"public":                computedDataSourceBoolAttribute("Whether HTTP previews are publicly accessible."),
-		"network_block_all":     computedDataSourceBoolAttribute("Whether all sandbox network access is blocked."),
-		"network_allow_list":    computedDataSourceStringAttribute("Comma-separated list of allowed CIDR network addresses."),
-		"target":                computedDataSourceStringAttribute("Target region where the sandbox is created."),
-		"cpu":                   computedDataSourceInt64Attribute("CPU cores allocated to the sandbox."),
-		"gpu":                   computedDataSourceInt64Attribute("GPU units allocated to the sandbox."),
-		"memory":                computedDataSourceInt64Attribute("Memory allocated to the sandbox in GB."),
-		"disk":                  computedDataSourceInt64Attribute("Disk allocated to the sandbox in GB."),
-		"auto_stop_interval":    computedDataSourceInt64Attribute("Auto-stop interval in minutes."),
-		"auto_archive_interval": computedDataSourceInt64Attribute("Auto-archive interval in minutes."),
-		"auto_delete_interval":  computedDataSourceInt64Attribute("Auto-delete interval in minutes."),
-		"state":                 computedDataSourceStringAttribute("Current sandbox state."),
-		"runner_id":             computedDataSourceStringAttribute("Runner ID hosting the sandbox, when assigned."),
-		"toolbox_proxy_url":     computedDataSourceStringAttribute("Toolbox proxy URL for the sandbox."),
-		"created_at":            computedDataSourceStringAttribute("Sandbox creation timestamp."),
-		"updated_at":            computedDataSourceStringAttribute("Sandbox update timestamp."),
-		"error_reason":          computedDataSourceStringAttribute("Sandbox error reason, when available."),
+		"id":    computedDataSourceStringAttribute("Daytona sandbox ID."),
+		"name":  computedDataSourceStringAttribute("Sandbox name."),
+		"state": computedDataSourceStringAttribute("Current sandbox state."),
 	}
 }
 
@@ -621,71 +558,32 @@ func flattenSandboxRegionQuota(ctx context.Context, sandboxID string, quota *api
 	return prior
 }
 
-func flattenSandboxRelationshipDataSource(ctx context.Context, sandbox *apiclient.Sandbox, prior sandboxRelationshipDataSourceModel) sandboxRelationshipDataSourceModel {
-	item := flattenSandboxRelationshipItem(ctx, sandbox)
+func flattenSandboxRelationshipDataSource(sandbox *apiclient.Sandbox, prior sandboxRelationshipDataSourceModel) sandboxRelationshipDataSourceModel {
+	item := flattenSandboxRelationshipItem(sandbox)
 
 	prior.ID = item.ID
 	prior.Name = item.Name
-	prior.OrganizationID = item.OrganizationID
-	prior.Snapshot = item.Snapshot
-	prior.User = item.User
-	prior.Env = item.Env
-	prior.Labels = item.Labels
-	prior.Public = item.Public
-	prior.NetworkBlockAll = item.NetworkBlockAll
-	prior.NetworkAllowList = item.NetworkAllowList
-	prior.Target = item.Target
-	prior.CPU = item.CPU
-	prior.GPU = item.GPU
-	prior.Memory = item.Memory
-	prior.Disk = item.Disk
-	prior.AutoStopInterval = item.AutoStopInterval
-	prior.AutoArchiveInterval = item.AutoArchiveInterval
-	prior.AutoDeleteInterval = item.AutoDeleteInterval
 	prior.State = item.State
-	prior.RunnerID = item.RunnerID
-	prior.ToolboxProxyURL = item.ToolboxProxyURL
-	prior.CreatedAt = item.CreatedAt
-	prior.UpdatedAt = item.UpdatedAt
-	prior.ErrorReason = item.ErrorReason
 
 	return prior
 }
 
-func flattenSandboxRelationshipItems(ctx context.Context, sandboxes []apiclient.Sandbox) []sandboxRelationshipItemModel {
+func flattenSandboxRelationshipItems(sandboxes []apiclient.Sandbox) []sandboxRelationshipItemModel {
 	items := make([]sandboxRelationshipItemModel, 0, len(sandboxes))
 	for i := range sandboxes {
-		items = append(items, flattenSandboxRelationshipItem(ctx, &sandboxes[i]))
+		items = append(items, flattenSandboxRelationshipItem(&sandboxes[i]))
 	}
 	return items
 }
 
-func flattenSandboxRelationshipItem(ctx context.Context, sandbox *apiclient.Sandbox) sandboxRelationshipItemModel {
-	flattened := flattenSandboxDataSource(ctx, "", sandbox)
-	return sandboxRelationshipItemModel{
-		ID:                  flattened.ID,
-		Name:                flattened.Name,
-		OrganizationID:      flattened.OrganizationID,
-		Snapshot:            flattened.Snapshot,
-		User:                flattened.User,
-		Env:                 flattened.Env,
-		Labels:              flattened.Labels,
-		Public:              flattened.Public,
-		NetworkBlockAll:     flattened.NetworkBlockAll,
-		NetworkAllowList:    flattened.NetworkAllowList,
-		Target:              flattened.Target,
-		CPU:                 flattened.CPU,
-		GPU:                 flattened.GPU,
-		Memory:              flattened.Memory,
-		Disk:                flattened.Disk,
-		AutoStopInterval:    flattened.AutoStopInterval,
-		AutoArchiveInterval: flattened.AutoArchiveInterval,
-		AutoDeleteInterval:  flattened.AutoDeleteInterval,
-		State:               flattened.State,
-		RunnerID:            flattened.RunnerID,
-		ToolboxProxyURL:     flattened.ToolboxProxyURL,
-		CreatedAt:           flattened.CreatedAt,
-		UpdatedAt:           flattened.UpdatedAt,
-		ErrorReason:         flattened.ErrorReason,
+func flattenSandboxRelationshipItem(sandbox *apiclient.Sandbox) sandboxRelationshipItemModel {
+	item := sandboxRelationshipItemModel{
+		ID:    types.StringValue(sandbox.Id),
+		Name:  types.StringValue(sandbox.Name),
+		State: types.StringNull(),
 	}
+	if sandbox.State != nil {
+		item.State = types.StringValue(string(*sandbox.State))
+	}
+	return item
 }

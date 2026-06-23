@@ -110,7 +110,10 @@ func TestAuthenticatedRunnerSandboxesDataSourceRead(t *testing.T) {
 	if data.Items[0].ID.ValueString() != "sandbox-1" {
 		t.Fatalf("expected sandbox ID %q, got %q", "sandbox-1", data.Items[0].ID.ValueString())
 	}
-	if data.Items[0].RunnerID.ValueString() != "runner-1" {
-		t.Fatalf("expected runner ID %q, got %q", "runner-1", data.Items[0].RunnerID.ValueString())
+	if data.Items[0].Name.ValueString() != "agent-runtime" {
+		t.Fatalf("expected sandbox name %q, got %q", "agent-runtime", data.Items[0].Name.ValueString())
+	}
+	if data.Items[0].State.ValueString() != "started" {
+		t.Fatalf("expected sandbox state %q, got %q", "started", data.Items[0].State.ValueString())
 	}
 }

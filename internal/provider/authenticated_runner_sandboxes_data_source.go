@@ -99,7 +99,7 @@ func (d *AuthenticatedRunnerSandboxesDataSource) Read(ctx context.Context, req d
 		RequestOrganizationID:    config.RequestOrganizationID,
 		States:                   config.States,
 		SkipReconcilingSandboxes: config.SkipReconcilingSandboxes,
-		Items:                    flattenSandboxRelationshipItems(ctx, sandboxes),
+		Items:                    flattenSandboxRelationshipItems(sandboxes),
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

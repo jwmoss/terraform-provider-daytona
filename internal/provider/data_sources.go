@@ -175,37 +175,9 @@ type collectionDataSourceModel struct {
 }
 
 type collectionItemModel struct {
-	ID               types.String `tfsdk:"id"`
-	Name             types.String `tfsdk:"name"`
-	Value            types.String `tfsdk:"value"`
-	Description      types.String `tfsdk:"description"`
-	Email            types.String `tfsdk:"email"`
-	UserID           types.String `tfsdk:"user_id"`
-	CreatedBy        types.String `tfsdk:"created_by"`
-	InvitedBy        types.String `tfsdk:"invited_by"`
-	OrganizationID   types.String `tfsdk:"organization_id"`
-	OrganizationName types.String `tfsdk:"organization_name"`
-	DefaultRegionID  types.String `tfsdk:"default_region_id"`
-	State            types.String `tfsdk:"state"`
-	Type             types.String `tfsdk:"type"`
-	Region           types.String `tfsdk:"region"`
-	RegionID         types.String `tfsdk:"region_id"`
-	RunnerID         types.String `tfsdk:"runner_id"`
-	Role             types.String `tfsdk:"role"`
-	AssignedRoleIDs  types.Set    `tfsdk:"assigned_role_ids"`
-	Permissions      types.Set    `tfsdk:"permissions"`
-	Target           types.String `tfsdk:"target"`
-	URL              types.String `tfsdk:"url"`
-	Username         types.String `tfsdk:"username"`
-	Project          types.String `tfsdk:"project"`
-	Public           types.Bool   `tfsdk:"public"`
-	Personal         types.Bool   `tfsdk:"personal"`
-	Suspended        types.Bool   `tfsdk:"suspended"`
-	IsGlobal         types.Bool   `tfsdk:"is_global"`
-	ExpiresAt        types.String `tfsdk:"expires_at"`
-	LastUsedAt       types.String `tfsdk:"last_used_at"`
-	CreatedAt        types.String `tfsdk:"created_at"`
-	UpdatedAt        types.String `tfsdk:"updated_at"`
+	ID    types.String `tfsdk:"id"`
+	Name  types.String `tfsdk:"name"`
+	State types.String `tfsdk:"state"`
 }
 
 func (d *collectionDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -220,37 +192,9 @@ func (d *collectionDataSource) Schema(ctx context.Context, req datasource.Schema
 			MarkdownDescription: "Returned Daytona objects.",
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
-					"id":                computedDataSourceStringAttribute("Object ID."),
-					"name":              computedDataSourceStringAttribute("Object name."),
-					"value":             sensitiveComputedDataSourceStringAttribute("Sensitive or masked object value, when applicable."),
-					"description":       computedDataSourceStringAttribute("Object description."),
-					"email":             computedDataSourceStringAttribute("Email address, when applicable."),
-					"user_id":           computedDataSourceStringAttribute("User ID, when applicable."),
-					"created_by":        computedDataSourceStringAttribute("Creator user ID, when applicable."),
-					"invited_by":        computedDataSourceStringAttribute("Inviter email address, when applicable."),
-					"organization_id":   computedDataSourceStringAttribute("Owning organization ID."),
-					"organization_name": computedDataSourceStringAttribute("Owning organization name."),
-					"default_region_id": computedDataSourceStringAttribute("Default organization region ID."),
-					"state":             computedDataSourceStringAttribute("Object state."),
-					"type":              computedDataSourceStringAttribute("Object type."),
-					"region":            computedDataSourceStringAttribute("Region name."),
-					"region_id":         computedDataSourceStringAttribute("Region ID."),
-					"runner_id":         computedDataSourceStringAttribute("Runner ID."),
-					"role":              computedDataSourceStringAttribute("Organization member role."),
-					"assigned_role_ids": computedDataSourceStringSetAttribute("Assigned organization role IDs."),
-					"permissions":       computedDataSourceStringSetAttribute("Assigned permissions."),
-					"target":            computedDataSourceStringAttribute("Target region or environment."),
-					"url":               computedDataSourceStringAttribute("Object URL, when applicable."),
-					"username":          computedDataSourceStringAttribute("Username, when applicable."),
-					"project":           computedDataSourceStringAttribute("Project or namespace, when applicable."),
-					"public":            computedDataSourceBoolAttribute("Whether the object is public, when applicable."),
-					"personal":          computedDataSourceBoolAttribute("Whether the organization is personal."),
-					"suspended":         computedDataSourceBoolAttribute("Whether the organization is suspended."),
-					"is_global":         computedDataSourceBoolAttribute("Whether the role is a global Daytona role."),
-					"expires_at":        computedDataSourceStringAttribute("Expiration timestamp, when applicable."),
-					"last_used_at":      computedDataSourceStringAttribute("Last-used timestamp, when applicable."),
-					"created_at":        computedDataSourceStringAttribute("Creation timestamp."),
-					"updated_at":        computedDataSourceStringAttribute("Update timestamp."),
+					"id":    computedDataSourceStringAttribute("Object ID."),
+					"name":  computedDataSourceStringAttribute("Object name."),
+					"state": computedDataSourceStringAttribute("Object state, when applicable."),
 				},
 			},
 		},
@@ -322,37 +266,9 @@ func (d *collectionDataSource) markdownDescription() string {
 
 func newCollectionItem() collectionItemModel {
 	return collectionItemModel{
-		ID:               types.StringNull(),
-		Name:             types.StringNull(),
-		Value:            types.StringNull(),
-		Description:      types.StringNull(),
-		Email:            types.StringNull(),
-		UserID:           types.StringNull(),
-		CreatedBy:        types.StringNull(),
-		InvitedBy:        types.StringNull(),
-		OrganizationID:   types.StringNull(),
-		OrganizationName: types.StringNull(),
-		DefaultRegionID:  types.StringNull(),
-		State:            types.StringNull(),
-		Type:             types.StringNull(),
-		Region:           types.StringNull(),
-		RegionID:         types.StringNull(),
-		RunnerID:         types.StringNull(),
-		Role:             types.StringNull(),
-		AssignedRoleIDs:  types.SetNull(types.StringType),
-		Permissions:      types.SetNull(types.StringType),
-		Target:           types.StringNull(),
-		URL:              types.StringNull(),
-		Username:         types.StringNull(),
-		Project:          types.StringNull(),
-		Public:           types.BoolNull(),
-		Personal:         types.BoolNull(),
-		Suspended:        types.BoolNull(),
-		IsGlobal:         types.BoolNull(),
-		ExpiresAt:        types.StringNull(),
-		LastUsedAt:       types.StringNull(),
-		CreatedAt:        types.StringNull(),
-		UpdatedAt:        types.StringNull(),
+		ID:    types.StringNull(),
+		Name:  types.StringNull(),
+		State: types.StringNull(),
 	}
 }
 
