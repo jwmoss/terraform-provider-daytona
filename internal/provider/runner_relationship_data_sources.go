@@ -12,11 +12,16 @@ import (
 )
 
 var _ datasource.DataSource = &RunnerFullDataSource{}
+var _ datasource.DataSource = &AuthenticatedRunnerDataSource{}
 var _ datasource.DataSource = &RunnerForSandboxDataSource{}
 var _ datasource.DataSource = &RunnersBySnapshotRefDataSource{}
 
 func NewRunnerFullDataSource() datasource.DataSource {
 	return &RunnerFullDataSource{}
+}
+
+func NewAuthenticatedRunnerDataSource() datasource.DataSource {
+	return &AuthenticatedRunnerDataSource{}
 }
 
 func NewRunnerForSandboxDataSource() datasource.DataSource {
@@ -28,6 +33,10 @@ func NewRunnersBySnapshotRefDataSource() datasource.DataSource {
 }
 
 type RunnerFullDataSource struct {
+	client *daytonaClient
+}
+
+type AuthenticatedRunnerDataSource struct {
 	client *daytonaClient
 }
 
@@ -145,6 +154,40 @@ func (d *RunnerFullDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	data := runnerFullDataSourceModel{ID: config.ID}
 	data = flattenRunnerFullDataSource(ctx, runner, data)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (d *AuthenticatedRunnerDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_authenticated_runner"
+}
+
+func (d *AuthenticatedRunnerDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Reads full Daytona runner details for the runner associated with the configured runner credentials.",
+		Attributes:          runnerFullDataSourceAttributes(""),
+	}
+}
+
+func (d *AuthenticatedRunnerDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	client := configureDataSourceClient(req.ProviderData, &resp.Diagnostics)
+	if client == nil {
+		return
+	}
+	d.client = client
+}
+
+func (d *AuthenticatedRunnerDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	runner, httpResp, err := d.client.api.RunnersAPI.GetInfoForAuthenticatedRunner(ctx).Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to read authenticated Daytona runner", "read authenticated runner", httpResp, err)
+		return
+	}
+	if runner == nil {
+		resp.Diagnostics.AddError("Empty Daytona authenticated runner response", "Daytona returned a successful response without authenticated runner data.")
+		return
+	}
+
+	data := flattenRunnerFullDataSource(ctx, runner, runnerFullDataSourceModel{})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 

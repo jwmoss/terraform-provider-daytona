@@ -12,7 +12,7 @@ func TestDaytonaProviderActions(t *testing.T) {
 	t.Parallel()
 
 	actions := (&DaytonaProvider{}).Actions(context.Background())
-	if got, want := len(actions), 30; got != want {
+	if got, want := len(actions), 33; got != want {
 		t.Fatalf("expected %d actions, got %d", want, got)
 	}
 
@@ -44,6 +44,8 @@ func TestDaytonaProviderActions(t *testing.T) {
 		"daytona_expire_sandbox_signed_port_preview_url",
 		"daytona_fork_sandbox",
 		"daytona_initialize_webhooks",
+		"daytona_runner_healthcheck",
+		"daytona_update_job_status",
 		"daytona_leave_organization",
 		"daytona_link_account",
 		"daytona_recover_sandbox",
@@ -56,6 +58,7 @@ func TestDaytonaProviderActions(t *testing.T) {
 		"daytona_unlink_account",
 		"daytona_unsuspend_organization",
 		"daytona_update_sandbox_last_activity",
+		"daytona_update_sandbox_state",
 	} {
 		if !actionNames[name] {
 			t.Fatalf("expected action %q to be registered, got %#v", name, actionNames)

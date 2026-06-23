@@ -3,15 +3,19 @@ package provider
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 var _ datasource.DataSource = &SandboxSSHAccessDataSource{}
+var _ datasource.DataSource = &SandboxBuildLogsDataSource{}
 var _ datasource.DataSource = &SandboxBuildLogsURLDataSource{}
 var _ datasource.DataSource = &SandboxPortPreviewURLDataSource{}
 var _ datasource.DataSource = &SandboxSignedPortPreviewURLDataSource{}
@@ -20,10 +24,15 @@ var _ datasource.DataSource = &SandboxAuthTokenValidationDataSource{}
 var _ datasource.DataSource = &SandboxAccessDataSource{}
 var _ datasource.DataSource = &SandboxIDFromSignedPreviewTokenDataSource{}
 var _ datasource.DataSource = &SandboxSSHAccessValidationDataSource{}
+var _ datasource.DataSource = &SnapshotBuildLogsDataSource{}
 var _ datasource.DataSource = &SnapshotBuildLogsURLDataSource{}
 
 func NewSandboxSSHAccessDataSource() datasource.DataSource {
 	return &SandboxSSHAccessDataSource{}
+}
+
+func NewSandboxBuildLogsDataSource() datasource.DataSource {
+	return &SandboxBuildLogsDataSource{}
 }
 
 func NewSandboxBuildLogsURLDataSource() datasource.DataSource {
@@ -58,11 +67,19 @@ func NewSandboxSSHAccessValidationDataSource() datasource.DataSource {
 	return &SandboxSSHAccessValidationDataSource{}
 }
 
+func NewSnapshotBuildLogsDataSource() datasource.DataSource {
+	return &SnapshotBuildLogsDataSource{}
+}
+
 func NewSnapshotBuildLogsURLDataSource() datasource.DataSource {
 	return &SnapshotBuildLogsURLDataSource{}
 }
 
 type SandboxSSHAccessDataSource struct {
+	client *daytonaClient
+}
+
+type SandboxBuildLogsDataSource struct {
 	client *daytonaClient
 }
 
@@ -77,6 +94,14 @@ type sandboxSSHAccessDataSourceModel struct {
 	ExpiresAt        types.String  `tfsdk:"expires_at"`
 	CreatedAt        types.String  `tfsdk:"created_at"`
 	UpdatedAt        types.String  `tfsdk:"updated_at"`
+}
+
+type sandboxBuildLogsDataSourceModel struct {
+	ID              types.String `tfsdk:"id"`
+	SandboxIDOrName types.String `tfsdk:"sandbox_id_or_name"`
+	OrganizationID  types.String `tfsdk:"organization_id"`
+	Follow          types.Bool   `tfsdk:"follow"`
+	Logs            types.String `tfsdk:"logs"`
 }
 
 func (d *SandboxSSHAccessDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -148,6 +173,66 @@ func (d *SandboxSSHAccessDataSource) Read(ctx context.Context, req datasource.Re
 	data.ExpiresAt = terraformTimeString(access.ExpiresAt)
 	data.CreatedAt = terraformTimeString(access.CreatedAt)
 	data.UpdatedAt = terraformTimeString(access.UpdatedAt)
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (d *SandboxBuildLogsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_sandbox_build_logs"
+}
+
+func (d *SandboxBuildLogsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Reads raw build logs for a Daytona sandbox. Daytona marks this endpoint deprecated; prefer the `daytona_sandbox_build_logs_url` data source for new configurations.",
+		Attributes: map[string]schema.Attribute{
+			"id":                 computedDataSourceStringAttribute("Data source identifier."),
+			"sandbox_id_or_name": requiredDataSourceStringAttribute("Sandbox ID or name."),
+			"organization_id":    optionalOrganizationIDDataSourceStringAttribute(),
+			"follow": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Whether Daytona should follow the log stream. Omit this for Terraform plans; a followed stream may block until the remote stream ends.",
+			},
+			"logs": sensitiveComputedDataSourceStringAttribute("Raw sandbox build logs."),
+		},
+	}
+}
+
+func (d *SandboxBuildLogsDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	client := configureDataSourceClient(req.ProviderData, &resp.Diagnostics)
+	if client == nil {
+		return
+	}
+	d.client = client
+}
+
+func (d *SandboxBuildLogsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data sandboxBuildLogsDataSourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	request := d.client.api.SandboxAPI.GetBuildLogs(ctx, data.SandboxIDOrName.ValueString())
+	if follow := optionalBool(data.Follow); follow != nil {
+		request = request.Follow(*follow)
+	}
+	if organizationID := optionalString(data.OrganizationID); organizationID != nil {
+		request = request.XDaytonaOrganizationID(*organizationID)
+	}
+
+	logResp, err := request.Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to read Daytona sandbox build logs", "read sandbox build logs", logResp, err)
+		return
+	}
+	logs, ok := readRawResponseBody(&resp.Diagnostics, "Empty Daytona sandbox build logs response", "read sandbox build logs", logResp)
+	if !ok {
+		return
+	}
+
+	data.ID = types.StringValue(data.SandboxIDOrName.ValueString() + ":build_logs")
+	data.Logs = types.StringValue(logs)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -763,11 +848,83 @@ type SnapshotBuildLogsURLDataSource struct {
 	client *daytonaClient
 }
 
+type SnapshotBuildLogsDataSource struct {
+	client *daytonaClient
+}
+
 type snapshotBuildLogsURLDataSourceModel struct {
 	ID             types.String `tfsdk:"id"`
 	SnapshotID     types.String `tfsdk:"snapshot_id"`
 	OrganizationID types.String `tfsdk:"organization_id"`
 	URL            types.String `tfsdk:"url"`
+}
+
+type snapshotBuildLogsDataSourceModel struct {
+	ID             types.String `tfsdk:"id"`
+	SnapshotID     types.String `tfsdk:"snapshot_id"`
+	OrganizationID types.String `tfsdk:"organization_id"`
+	Follow         types.Bool   `tfsdk:"follow"`
+	Logs           types.String `tfsdk:"logs"`
+}
+
+func (d *SnapshotBuildLogsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_snapshot_build_logs"
+}
+
+func (d *SnapshotBuildLogsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Reads raw build logs for a Daytona snapshot. Daytona marks this endpoint deprecated; prefer the `daytona_snapshot_build_logs_url` data source for new configurations.",
+		Attributes: map[string]schema.Attribute{
+			"id":              computedDataSourceStringAttribute("Data source identifier."),
+			"snapshot_id":     requiredDataSourceStringAttribute("Snapshot ID."),
+			"organization_id": optionalOrganizationIDDataSourceStringAttribute(),
+			"follow": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Whether Daytona should follow the log stream. Omit this for Terraform plans; a followed stream may block until the remote stream ends.",
+			},
+			"logs": sensitiveComputedDataSourceStringAttribute("Raw snapshot build logs."),
+		},
+	}
+}
+
+func (d *SnapshotBuildLogsDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	client := configureDataSourceClient(req.ProviderData, &resp.Diagnostics)
+	if client == nil {
+		return
+	}
+	d.client = client
+}
+
+func (d *SnapshotBuildLogsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data snapshotBuildLogsDataSourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	request := d.client.api.SnapshotsAPI.GetSnapshotBuildLogs(ctx, data.SnapshotID.ValueString())
+	if follow := optionalBool(data.Follow); follow != nil {
+		request = request.Follow(*follow)
+	}
+	if organizationID := optionalString(data.OrganizationID); organizationID != nil {
+		request = request.XDaytonaOrganizationID(*organizationID)
+	}
+
+	logResp, err := request.Execute()
+	if err != nil {
+		addAPIError(&resp.Diagnostics, "Unable to read Daytona snapshot build logs", "read snapshot build logs", logResp, err)
+		return
+	}
+	logs, ok := readRawResponseBody(&resp.Diagnostics, "Empty Daytona snapshot build logs response", "read snapshot build logs", logResp)
+	if !ok {
+		return
+	}
+
+	data.ID = types.StringValue(data.SnapshotID.ValueString() + ":build_logs")
+	data.Logs = types.StringValue(logs)
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (d *SnapshotBuildLogsURLDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -846,4 +1003,19 @@ func optionalOrganizationIDDataSourceStringAttribute() schema.StringAttribute {
 		Optional:            true,
 		MarkdownDescription: "Daytona organization ID to send as `X-Daytona-Organization-ID`.",
 	}
+}
+
+func readRawResponseBody(diags *diag.Diagnostics, summary string, operation string, resp *http.Response) (string, bool) {
+	if resp == nil || resp.Body == nil {
+		addEmptyAPIResponseError(diags, summary, operation, resp)
+		return "", false
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		diags.AddError(summary, fmt.Sprintf("Daytona %s response body could not be read: %s", operation, err))
+		return "", false
+	}
+	return string(body), true
 }
