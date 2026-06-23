@@ -31,27 +31,6 @@ data "daytona_sandbox_parent" "example" {
 
 ### Read-Only
 
-- `auto_archive_interval` (Number) Auto-archive interval in minutes.
-- `auto_delete_interval` (Number) Auto-delete interval in minutes.
-- `auto_stop_interval` (Number) Auto-stop interval in minutes.
-- `cpu` (Number) CPU cores allocated to the sandbox.
-- `created_at` (String) Sandbox creation timestamp.
-- `disk` (Number) Disk allocated to the sandbox in GB.
-- `env` (Map of String, Sensitive) Environment variables for the sandbox.
-- `error_reason` (String) Sandbox error reason, when available.
-- `gpu` (Number) GPU units allocated to the sandbox.
 - `id` (String) Daytona sandbox ID.
-- `labels` (Map of String) Labels for the sandbox.
-- `memory` (Number) Memory allocated to the sandbox in GB.
 - `name` (String) Sandbox name.
-- `network_allow_list` (String) Comma-separated list of allowed CIDR network addresses.
-- `network_block_all` (Boolean) Whether all sandbox network access is blocked.
-- `organization_id` (String) Daytona organization ID that owns the sandbox.
-- `public` (Boolean) Whether HTTP previews are publicly accessible.
-- `runner_id` (String) Runner ID hosting the sandbox, when assigned.
-- `snapshot` (String) Snapshot ID or name used to create the sandbox.
 - `state` (String) Current sandbox state.
-- `target` (String) Target region where the sandbox is created.
-- `toolbox_proxy_url` (String) Toolbox proxy URL for the sandbox.
-- `updated_at` (String) Sandbox update timestamp.
-- `user` (String) User associated with the sandbox project.

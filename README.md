@@ -15,18 +15,15 @@ This repository contains a Terraform Plugin Framework provider for [Daytona](htt
   - **Platform** — runners, regions, region quotas, Docker registries, snapshots, volumes
   - **Governance** — organizations, roles, member access, invitations, API keys, OpenTelemetry config
   - **Sandboxes** — a sandbox lifecycle resource plus a broad set of sandbox and observability data sources
-  - **Actions** — optional provider-defined actions (snapshot activate/deactivate, sandbox start/stop/fork/archive, webhook and admin operations) for Terraform 1.14+
 
-The provider exposes 15 resources, 73 data sources, and 30 actions, all backed by
-Daytona's generated Go OpenAPI client (`github.com/daytonaio/daytona/libs/api-client-go`).
+The provider exposes 15 resources and 70 data sources, all backed by Daytona's
+generated Go OpenAPI client (`github.com/daytonaio/daytona/libs/api-client-go`).
 
 ## Documentation
 
-The full reference for every resource, data source, and action is generated into
+The full reference for every resource and data source is generated into
 [`docs/`](docs/) with [`tfplugindocs`](https://github.com/hashicorp/terraform-plugin-docs)
-and rendered on the Terraform Registry. See
-[docs/api-coverage.md](docs/api-coverage.md) for the Daytona API coverage matrix and
-intentionally excluded endpoints.
+and rendered on the Terraform Registry.
 
 ## Example
 
@@ -132,17 +129,14 @@ for:
   least-privilege, expiring API keys for CI systems and service accounts.
 
 The use-case examples rely only on resources and data sources, so they work
-with both Terraform and OpenTofu. Provider-defined actions are an optional
-extra that require Terraform 1.14+ and are not supported by OpenTofu; where an
-action has a resource equivalent (for example sandbox start/stop via the
-`daytona_sandbox.desired_state` attribute), prefer the resource.
+with both Terraform and OpenTofu.
 
 ## Development
 
 Requirements:
 
 - Go 1.25 or newer
-- Terraform 1.0 or newer; provider-defined actions require Terraform 1.14 or newer
+- Terraform 1.0 or newer
 
 Run the local test suite:
 

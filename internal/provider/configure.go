@@ -30,7 +30,3 @@ func configureResourceDaytonaClient(providerData any, diags *diag.Diagnostics) *
 func configureDataSourceClient(providerData any, diags *diag.Diagnostics) *daytonaClient {
 	return configureDaytonaClient(providerData, "Data Source", diags)
 }
-
-func configureActionDaytonaClient(providerData any, diags *diag.Diagnostics) *daytonaClient {
-	return configureDaytonaClient(providerData, "Action", diags)
-}

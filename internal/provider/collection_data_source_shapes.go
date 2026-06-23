@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"time"
 
 	apiclient "github.com/daytonaio/daytona/libs/api-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -77,16 +76,6 @@ func readAPIKeyCollection(ctx context.Context, client *daytonaClient, _ types.St
 		item := newCollectionItem()
 		item.ID = types.StringValue(apiKey.Name)
 		item.Name = types.StringValue(apiKey.Name)
-		item.Value = types.StringValue(apiKey.Value)
-		item.Permissions = setStringValue(ctx, apiKey.Permissions)
-		item.UserID = types.StringValue(apiKey.UserId)
-		item.CreatedAt = terraformTimeString(apiKey.CreatedAt)
-		if value, ok := apiKey.GetLastUsedAtOk(); ok && value != nil {
-			item.LastUsedAt = terraformTimeString(*value)
-		}
-		if value, ok := apiKey.GetExpiresAtOk(); ok && value != nil {
-			item.ExpiresAt = terraformTimeString(*value)
-		}
 		items = append(items, item)
 	}
 
@@ -105,10 +94,7 @@ func readVolumeCollection(ctx context.Context, client *daytonaClient, _ types.St
 		item := newCollectionItem()
 		item.ID = types.StringValue(volume.Id)
 		item.Name = types.StringValue(volume.Name)
-		item.OrganizationID = types.StringValue(volume.OrganizationId)
 		item.State = types.StringValue(string(volume.State))
-		item.CreatedAt = types.StringValue(volume.CreatedAt)
-		item.UpdatedAt = types.StringValue(volume.UpdatedAt)
 		items = append(items, item)
 	}
 
@@ -148,9 +134,6 @@ func readRunnerCollection(ctx context.Context, client *daytonaClient, _ types.St
 		item.ID = types.StringValue(runner.Id)
 		item.Name = types.StringValue(runner.Name)
 		item.State = types.StringValue(string(runner.State))
-		item.Region = types.StringValue(runner.Region)
-		item.CreatedAt = types.StringValue(runner.CreatedAt)
-		item.UpdatedAt = types.StringValue(runner.UpdatedAt)
 		items = append(items, item)
 	}
 
@@ -180,16 +163,8 @@ func readSandboxCollection(ctx context.Context, client *daytonaClient, _ types.S
 			item := newCollectionItem()
 			item.ID = types.StringValue(sandbox.Id)
 			item.Name = types.StringValue(sandbox.Name)
-			item.OrganizationID = types.StringValue(sandbox.OrganizationId)
-			item.Target = types.StringValue(sandbox.Target)
-			item.Public = types.BoolValue(sandbox.Public)
-			item.CreatedAt = pointerStringValue(sandbox.CreatedAt)
-			item.UpdatedAt = pointerStringValue(sandbox.UpdatedAt)
 			if sandbox.State != nil {
 				item.State = types.StringValue(string(*sandbox.State))
-			}
-			if sandbox.RunnerId != nil {
-				item.RunnerID = types.StringValue(*sandbox.RunnerId)
 			}
 			items = append(items, item)
 		}
@@ -223,11 +198,6 @@ func readSnapshotCollection(ctx context.Context, client *daytonaClient, _ types.
 			item.ID = types.StringValue(snapshot.Id)
 			item.Name = types.StringValue(snapshot.Name)
 			item.State = types.StringValue(string(snapshot.State))
-			item.CreatedAt = types.StringValue(snapshot.CreatedAt.Format(time.RFC3339))
-			item.UpdatedAt = types.StringValue(snapshot.UpdatedAt.Format(time.RFC3339))
-			if snapshot.OrganizationId != nil {
-				item.OrganizationID = types.StringValue(*snapshot.OrganizationId)
-			}
 			items = append(items, item)
 		}
 		if page >= snapshots.TotalPages || len(snapshots.Items) == 0 {
@@ -250,12 +220,6 @@ func readDockerRegistryCollection(ctx context.Context, client *daytonaClient, _ 
 		item := newCollectionItem()
 		item.ID = types.StringValue(registry.Id)
 		item.Name = types.StringValue(registry.Name)
-		item.URL = types.StringValue(registry.Url)
-		item.Username = types.StringValue(registry.Username)
-		item.Project = types.StringValue(registry.Project)
-		item.Type = types.StringValue(registry.RegistryType)
-		item.CreatedAt = types.StringValue(registry.CreatedAt.Format(time.RFC3339))
-		item.UpdatedAt = types.StringValue(registry.UpdatedAt.Format(time.RFC3339))
 		items = append(items, item)
 	}
 
@@ -274,14 +238,6 @@ func readOrganizationCollection(ctx context.Context, client *daytonaClient, _ ty
 		item := newCollectionItem()
 		item.ID = types.StringValue(organization.Id)
 		item.Name = types.StringValue(organization.Name)
-		item.CreatedBy = types.StringValue(organization.CreatedBy)
-		item.Personal = types.BoolValue(organization.Personal)
-		item.Suspended = types.BoolValue(organization.Suspended)
-		item.CreatedAt = terraformTimeString(organization.CreatedAt)
-		item.UpdatedAt = terraformTimeString(organization.UpdatedAt)
-		if value, ok := organization.GetDefaultRegionIdOk(); ok && value != nil {
-			item.DefaultRegionID = types.StringValue(*value)
-		}
 		items = append(items, item)
 	}
 
@@ -299,13 +255,7 @@ func readOrganizationRoleCollection(ctx context.Context, client *daytonaClient, 
 	for _, role := range roles {
 		item := newCollectionItem()
 		item.ID = types.StringValue(role.Id)
-		item.OrganizationID = organizationID
 		item.Name = types.StringValue(role.Name)
-		item.Description = types.StringValue(role.Description)
-		item.Permissions = setStringValue(ctx, role.Permissions)
-		item.IsGlobal = types.BoolValue(role.IsGlobal)
-		item.CreatedAt = terraformTimeString(role.CreatedAt)
-		item.UpdatedAt = terraformTimeString(role.UpdatedAt)
 		items = append(items, item)
 	}
 
@@ -323,13 +273,7 @@ func readOrganizationMemberCollection(ctx context.Context, client *daytonaClient
 	for _, member := range members {
 		item := newCollectionItem()
 		item.ID = types.StringValue(member.UserId)
-		item.OrganizationID = types.StringValue(member.OrganizationId)
 		item.Name = types.StringValue(member.Name)
-		item.Email = types.StringValue(member.Email)
-		item.Role = types.StringValue(member.Role)
-		item.AssignedRoleIDs = setStringValue(ctx, organizationRoleIDs(member.AssignedRoles))
-		item.CreatedAt = terraformTimeString(member.CreatedAt)
-		item.UpdatedAt = terraformTimeString(member.UpdatedAt)
 		items = append(items, item)
 	}
 
@@ -347,16 +291,8 @@ func readOrganizationInvitationCollection(ctx context.Context, client *daytonaCl
 	for _, invitation := range invitations {
 		item := newCollectionItem()
 		item.ID = types.StringValue(invitation.Id)
-		item.OrganizationID = types.StringValue(invitation.OrganizationId)
-		item.OrganizationName = types.StringValue(invitation.OrganizationName)
-		item.Email = types.StringValue(invitation.Email)
-		item.InvitedBy = types.StringValue(invitation.InvitedBy)
-		item.Role = types.StringValue(invitation.Role)
-		item.AssignedRoleIDs = setStringValue(ctx, organizationRoleIDs(invitation.AssignedRoles))
+		item.Name = types.StringValue(invitation.Email)
 		item.State = types.StringValue(invitation.Status)
-		item.ExpiresAt = terraformTimeString(invitation.ExpiresAt)
-		item.CreatedAt = terraformTimeString(invitation.CreatedAt)
-		item.UpdatedAt = terraformTimeString(invitation.UpdatedAt)
 		items = append(items, item)
 	}
 
@@ -370,12 +306,6 @@ func regionCollectionItems(regions []apiclient.Region) []collectionItemModel {
 		item := newCollectionItem()
 		item.ID = types.StringValue(region.GetId())
 		item.Name = types.StringValue(region.GetName())
-		item.Type = types.StringValue(string(region.GetRegionType()))
-		item.CreatedAt = types.StringValue(region.GetCreatedAt())
-		item.UpdatedAt = types.StringValue(region.GetUpdatedAt())
-		if value, ok := region.GetOrganizationIdOk(); ok && value != nil {
-			item.OrganizationID = types.StringValue(*value)
-		}
 		items = append(items, item)
 	}
 

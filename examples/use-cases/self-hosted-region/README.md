@@ -43,5 +43,5 @@ export DAYTONA_API_KEY="dtn_..."
 terraform init && terraform apply
 ```
 
-Works with OpenTofu (`tofu init && tofu apply`) — only resources and data
-sources, no provider-defined actions.
+Works with OpenTofu (`tofu init && tofu apply`) using only resources and data
+sources.
