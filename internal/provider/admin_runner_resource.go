@@ -204,9 +204,7 @@ func (r *AdminRunnerResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	// Persist the runner before follow-up calls so a failure cannot orphan it.
-	nullUnknownModelValues(ctx, &data)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
+	if !persistCreatedResourceState(ctx, resp.State.Set, &data, &resp.Diagnostics) {
 		return
 	}
 

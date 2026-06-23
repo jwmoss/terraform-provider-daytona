@@ -954,11 +954,6 @@ func (d *ObjectStoragePushAccessDataSource) Read(ctx context.Context, req dataso
 func regionUsageModels(ctx context.Context, usages []apiclient.RegionUsageOverview) []regionUsageModel {
 	items := make([]regionUsageModel, 0, len(usages))
 	for _, usage := range usages {
-		allowedGPUTypes := make([]string, 0, len(usage.AllowedGpuTypes))
-		for _, gpuType := range usage.AllowedGpuTypes {
-			allowedGPUTypes = append(allowedGPUTypes, string(gpuType))
-		}
-
 		item := regionUsageModel{
 			RegionID:                      types.StringValue(usage.RegionId),
 			SandboxClass:                  types.StringValue(string(usage.SandboxClass)),
@@ -970,7 +965,7 @@ func regionUsageModels(ctx context.Context, usages []apiclient.RegionUsageOvervi
 			CurrentDiskUsage:              float64Value(usage.CurrentDiskUsage),
 			TotalGPUQuota:                 float64Value(usage.TotalGpuQuota),
 			CurrentGPUUsage:               float64Value(usage.CurrentGpuUsage),
-			AllowedGPUTypes:               listStringValue(ctx, allowedGPUTypes),
+			AllowedGPUTypes:               listStringValue(ctx, gpuTypeStrings(usage.AllowedGpuTypes)),
 			MaxCPUPerSandbox:              nullableFloat32Pointer(usage.MaxCpuPerSandbox.Get()),
 			MaxMemoryPerSandbox:           nullableFloat32Pointer(usage.MaxMemoryPerSandbox.Get()),
 			MaxDiskPerSandbox:             nullableFloat32Pointer(usage.MaxDiskPerSandbox.Get()),

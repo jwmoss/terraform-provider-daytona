@@ -65,20 +65,7 @@ func (a *webhookAction) Schema(ctx context.Context, req action.SchemaRequest, re
 }
 
 func (a *webhookAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*daytonaClient)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Action Configure Type",
-			fmt.Sprintf("Expected *daytonaClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-		return
-	}
-
-	a.client = client
+	a.client = configureActionDaytonaClient(req.ProviderData, &resp.Diagnostics)
 }
 
 func (a *webhookAction) Invoke(ctx context.Context, req action.InvokeRequest, resp *action.InvokeResponse) {

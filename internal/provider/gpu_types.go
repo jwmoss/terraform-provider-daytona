@@ -39,3 +39,11 @@ func expandGPUTypes(ctx context.Context, value types.List) ([]apiclient.GpuType,
 
 	return gpuTypes, diags
 }
+
+func gpuTypeStrings(gpuTypes []apiclient.GpuType) []string {
+	values := make([]string, 0, len(gpuTypes))
+	for _, gpuType := range gpuTypes {
+		values = append(values, string(gpuType))
+	}
+	return values
+}

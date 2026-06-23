@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	apiclient "github.com/daytonaio/daytona/libs/api-client-go"
@@ -621,23 +620,6 @@ func organizationIDActionAttribute() actionschema.StringAttribute {
 		Optional:            true,
 		MarkdownDescription: "Daytona organization ID to send as `X-Daytona-Organization-ID` for this action. Defaults to the provider-level organization ID when configured.",
 	}
-}
-
-func configureActionDaytonaClient(providerData any, diags *diag.Diagnostics) *daytonaClient {
-	if providerData == nil {
-		return nil
-	}
-
-	client, ok := providerData.(*daytonaClient)
-	if !ok {
-		diags.AddError(
-			"Unexpected Action Configure Type",
-			fmt.Sprintf("Expected *daytonaClient, got: %T. Please report this issue to the provider developers.", providerData),
-		)
-		return nil
-	}
-
-	return client
 }
 
 func ensureActionClient(client *daytonaClient, diags *diag.Diagnostics) bool {

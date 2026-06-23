@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/action"
@@ -64,20 +63,7 @@ func (a *SandboxExpireSignedPortPreviewURLAction) Schema(ctx context.Context, re
 }
 
 func (a *SandboxExpireSignedPortPreviewURLAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*daytonaClient)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Action Configure Type",
-			fmt.Sprintf("Expected *daytonaClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-		return
-	}
-
-	a.client = client
+	a.client = configureActionDaytonaClient(req.ProviderData, &resp.Diagnostics)
 }
 
 func (a *SandboxExpireSignedPortPreviewURLAction) Invoke(ctx context.Context, req action.InvokeRequest, resp *action.InvokeResponse) {
@@ -174,20 +160,7 @@ func (a *SandboxRevokeSSHAccessAction) Schema(ctx context.Context, req action.Sc
 }
 
 func (a *SandboxRevokeSSHAccessAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*daytonaClient)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Action Configure Type",
-			fmt.Sprintf("Expected *daytonaClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-		return
-	}
-
-	a.client = client
+	a.client = configureActionDaytonaClient(req.ProviderData, &resp.Diagnostics)
 }
 
 func (a *SandboxRevokeSSHAccessAction) Invoke(ctx context.Context, req action.InvokeRequest, resp *action.InvokeResponse) {
