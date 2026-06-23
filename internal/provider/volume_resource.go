@@ -92,20 +92,7 @@ func (r *VolumeResource) Schema(ctx context.Context, req resource.SchemaRequest,
 }
 
 func (r *VolumeResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*daytonaClient)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *daytonaClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-		return
-	}
-
-	r.client = client
+	r.client = configureResourceDaytonaClient(req.ProviderData, &resp.Diagnostics)
 }
 
 func (r *VolumeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -126,9 +113,7 @@ func (r *VolumeResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	// Persist the volume before polling so a timeout cannot orphan it.
 	data = flattenVolume(volume, data)
-	nullUnknownModelValues(ctx, &data)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
+	if !persistCreatedResourceState(ctx, resp.State.Set, &data, &resp.Diagnostics) {
 		return
 	}
 

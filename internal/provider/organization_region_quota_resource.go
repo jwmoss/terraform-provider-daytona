@@ -148,23 +148,6 @@ func (r *AdminOrganizationRegionQuotaResource) Configure(ctx context.Context, re
 	r.client = configureResourceDaytonaClient(req.ProviderData, &resp.Diagnostics)
 }
 
-func configureResourceDaytonaClient(providerData any, diags *diag.Diagnostics) *daytonaClient {
-	if providerData == nil {
-		return nil
-	}
-
-	client, ok := providerData.(*daytonaClient)
-	if !ok {
-		diags.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *daytonaClient, got: %T. Please report this issue to the provider developers.", providerData),
-		)
-		return nil
-	}
-
-	return client
-}
-
 func (r *OrganizationRegionQuotaResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data organizationRegionQuotaResourceModel
 
@@ -178,9 +161,7 @@ func (r *OrganizationRegionQuotaResource) Create(ctx context.Context, req resour
 	}
 
 	data.ID = organizationRegionQuotaID(data)
-	nullUnknownModelValues(ctx, &data)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
+	if !persistCreatedResourceState(ctx, resp.State.Set, &data, &resp.Diagnostics) {
 		return
 	}
 
@@ -609,11 +590,6 @@ func (r *OrganizationRegionQuotaResource) readOrganizationRegionQuota(ctx contex
 }
 
 func flattenOrganizationRegionQuota(ctx context.Context, usage *apiclient.RegionUsageOverview, prior organizationRegionQuotaResourceModel) organizationRegionQuotaResourceModel {
-	allowedGPUTypes := make([]string, 0, len(usage.AllowedGpuTypes))
-	for _, gpuType := range usage.AllowedGpuTypes {
-		allowedGPUTypes = append(allowedGPUTypes, string(gpuType))
-	}
-
 	prior.ID = types.StringValue(prior.OrganizationID.ValueString() + ":" + usage.RegionId + ":" + string(usage.SandboxClass))
 	prior.RegionID = types.StringValue(usage.RegionId)
 	prior.SandboxClass = types.StringValue(string(usage.SandboxClass))
@@ -621,7 +597,7 @@ func flattenOrganizationRegionQuota(ctx context.Context, usage *apiclient.Region
 	prior.TotalMemoryQuota = float64Value(usage.TotalMemoryQuota)
 	prior.TotalDiskQuota = float64Value(usage.TotalDiskQuota)
 	prior.TotalGPUQuota = float64Value(usage.TotalGpuQuota)
-	prior.AllowedGPUTypes = listStringValue(ctx, allowedGPUTypes)
+	prior.AllowedGPUTypes = listStringValue(ctx, gpuTypeStrings(usage.AllowedGpuTypes))
 	prior.MaxCPUPerSandbox = nullableFloat32Pointer(usage.MaxCpuPerSandbox.Get())
 	prior.MaxMemoryPerSandbox = nullableFloat32Pointer(usage.MaxMemoryPerSandbox.Get())
 	prior.MaxDiskPerSandbox = nullableFloat32Pointer(usage.MaxDiskPerSandbox.Get())
@@ -634,11 +610,6 @@ func flattenOrganizationRegionQuota(ctx context.Context, usage *apiclient.Region
 }
 
 func flattenAdminOrganizationRegionQuota(ctx context.Context, quota *apiclient.RegionQuota, prior organizationRegionQuotaResourceModel) organizationRegionQuotaResourceModel {
-	allowedGPUTypes := make([]string, 0, len(quota.AllowedGpuTypes))
-	for _, gpuType := range quota.AllowedGpuTypes {
-		allowedGPUTypes = append(allowedGPUTypes, string(gpuType))
-	}
-
 	organizationID := quota.OrganizationId
 	if organizationID == "" {
 		organizationID = prior.OrganizationID.ValueString()
@@ -660,7 +631,7 @@ func flattenAdminOrganizationRegionQuota(ctx context.Context, quota *apiclient.R
 	prior.TotalMemoryQuota = float64Value(quota.TotalMemoryQuota)
 	prior.TotalDiskQuota = float64Value(quota.TotalDiskQuota)
 	prior.TotalGPUQuota = float64Value(quota.TotalGpuQuota)
-	prior.AllowedGPUTypes = listStringValue(ctx, allowedGPUTypes)
+	prior.AllowedGPUTypes = listStringValue(ctx, gpuTypeStrings(quota.AllowedGpuTypes))
 	prior.MaxCPUPerSandbox = nullableFloat32Pointer(quota.MaxCpuPerSandbox.Get())
 	prior.MaxMemoryPerSandbox = nullableFloat32Pointer(quota.MaxMemoryPerSandbox.Get())
 	prior.MaxDiskPerSandbox = nullableFloat32Pointer(quota.MaxDiskPerSandbox.Get())

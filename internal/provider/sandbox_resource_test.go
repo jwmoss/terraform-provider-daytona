@@ -2,11 +2,9 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -91,25 +89,12 @@ func TestSandboxResourceSchemaServerDefaults(t *testing.T) {
 func TestSandboxResourceUpdateClearsIntervals(t *testing.T) {
 	t.Parallel()
 
-	requests := map[string]int{}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.EscapedPath()
-		requests[r.Method+" "+path]++
-		w.Header().Set("Content-Type", "application/json")
-
-		switch {
-		case r.Method == http.MethodPost && path == "/sandbox/sandbox-1/autostop/0":
-			_, _ = w.Write([]byte(sandboxIntervalJSON(60, 120)))
-		case r.Method == http.MethodPost && path == "/sandbox/sandbox-1/autoarchive/0":
-			_, _ = w.Write([]byte(sandboxIntervalJSON(0, 120)))
-		case r.Method == http.MethodPost && path == "/sandbox/sandbox-1/autodelete/-1":
-			_, _ = w.Write([]byte(sandboxIntervalJSON(0, -1)))
-		case r.Method == http.MethodGet && path == "/sandbox/sandbox-1":
-			_, _ = w.Write([]byte(sandboxIntervalJSON(0, -1)))
-		default:
-			t.Fatalf("unexpected request %s %s", r.Method, path)
-		}
-	}))
+	server, requests := newDaytonaHTTPServer(t,
+		daytonaHTTPExpectation{method: http.MethodPost, path: "/sandbox/sandbox-1/autostop/0", response: sandboxIntervalJSON(60, 120)},
+		daytonaHTTPExpectation{method: http.MethodPost, path: "/sandbox/sandbox-1/autoarchive/0", response: sandboxIntervalJSON(0, 120)},
+		daytonaHTTPExpectation{method: http.MethodPost, path: "/sandbox/sandbox-1/autodelete/-1", response: sandboxIntervalJSON(0, -1)},
+		daytonaHTTPExpectation{method: http.MethodGet, path: "/sandbox/sandbox-1", response: sandboxIntervalJSON(0, -1)},
+	)
 	defer server.Close()
 
 	sandboxResource := &SandboxResource{client: newDaytonaClient(server.URL, "test-token", "org-1", "test")}
@@ -139,8 +124,9 @@ func TestSandboxResourceUpdateClearsIntervals(t *testing.T) {
 		"POST /sandbox/sandbox-1/autodelete/-1",
 		"GET /sandbox/sandbox-1",
 	} {
-		if requests[key] != 1 {
-			t.Fatalf("expected one %s request, got %d; all requests: %#v", key, requests[key], requests)
+		method, path, _ := strings.Cut(key, " ")
+		if requests.Count(method, path) != 1 {
+			t.Fatalf("expected one %s request, got %d; all requests: %#v", key, requests.Count(method, path), requests.Counts())
 		}
 	}
 }
@@ -173,28 +159,21 @@ func sandboxIntervalJSON(autoArchive, autoDelete int) string {
 func TestSandboxResourceCreateRequestAdvancedFields(t *testing.T) {
 	t.Parallel()
 
-	var gotMethod, gotPath string
 	var createPayload map[string]any
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod = r.Method
-		gotPath = r.URL.EscapedPath()
-		if r.Header.Get("Authorization") != "Bearer test-token" {
-			t.Fatalf("expected bearer token header, got %q", r.Header.Get("Authorization"))
-		}
-		if r.Header.Get(organizationHeader) != "org-1" {
-			t.Fatalf("expected organization header %q, got %q", "org-1", r.Header.Get(organizationHeader))
-		}
-
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Fatalf("failed reading body: %s", err)
-		}
-		if err := json.Unmarshal(body, &createPayload); err != nil {
-			t.Fatalf("failed unmarshalling create payload %q: %s", string(body), err)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{
+	server, requests := newDaytonaHTTPServer(t, daytonaHTTPExpectation{
+		method:      http.MethodPost,
+		path:        "/sandbox",
+		captureJSON: &createPayload,
+		check: func(t *testing.T, r *http.Request) {
+			t.Helper()
+			if r.Header.Get("Authorization") != "Bearer test-token" {
+				t.Fatalf("expected bearer token header, got %q", r.Header.Get("Authorization"))
+			}
+			if r.Header.Get(organizationHeader) != "org-1" {
+				t.Fatalf("expected organization header %q, got %q", "org-1", r.Header.Get(organizationHeader))
+			}
+		},
+		response: `{
 			"id": "sandbox-1",
 			"organizationId": "org-1",
 			"name": "sandbox",
@@ -228,8 +207,8 @@ func TestSandboxResourceCreateRequestAdvancedFields(t *testing.T) {
 			"updatedAt": "2026-06-01T12:05:00Z",
 			"lastActivityAt": "2026-06-01T12:06:00Z",
 			"toolboxProxyUrl": "https://toolbox.example"
-		}`))
-	}))
+		}`,
+	})
 	defer server.Close()
 
 	volumeType := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
@@ -278,11 +257,8 @@ func TestSandboxResourceCreateRequestAdvancedFields(t *testing.T) {
 		t.Fatalf("unexpected create diagnostics: %s", createResp.Diagnostics)
 	}
 
-	if gotMethod != http.MethodPost {
-		t.Fatalf("expected method %s, got %s", http.MethodPost, gotMethod)
-	}
-	if gotPath != "/sandbox" {
-		t.Fatalf("expected path %q, got %q", "/sandbox", gotPath)
+	if requests.Count(http.MethodPost, "/sandbox") != 1 {
+		t.Fatalf("expected one POST /sandbox request, got %d; all requests: %#v", requests.Count(http.MethodPost, "/sandbox"), requests.Counts())
 	}
 	if createPayload["name"] != "sandbox" {
 		t.Fatalf("expected payload name sandbox, got %#v", createPayload["name"])

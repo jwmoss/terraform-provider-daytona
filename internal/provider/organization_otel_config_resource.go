@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	apiclient "github.com/daytonaio/daytona/libs/api-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -73,20 +72,7 @@ func (r *OrganizationOtelConfigResource) Schema(ctx context.Context, req resourc
 }
 
 func (r *OrganizationOtelConfigResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*daytonaClient)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *daytonaClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-		return
-	}
-
-	r.client = client
+	r.client = configureResourceDaytonaClient(req.ProviderData, &resp.Diagnostics)
 }
 
 func (r *OrganizationOtelConfigResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

@@ -601,11 +601,6 @@ func flattenSandboxOrganization(organization *apiclient.Organization, prior sand
 }
 
 func flattenSandboxRegionQuota(ctx context.Context, sandboxID string, quota *apiclient.RegionQuota, prior sandboxRegionQuotaDataSourceModel) sandboxRegionQuotaDataSourceModel {
-	allowedGPUTypes := make([]string, 0, len(quota.AllowedGpuTypes))
-	for _, gpuType := range quota.AllowedGpuTypes {
-		allowedGPUTypes = append(allowedGPUTypes, string(gpuType))
-	}
-
 	prior.ID = types.StringValue(sandboxID + ":region_quota")
 	prior.OrganizationID = types.StringValue(quota.OrganizationId)
 	prior.RegionID = types.StringValue(quota.RegionId)
@@ -614,7 +609,7 @@ func flattenSandboxRegionQuota(ctx context.Context, sandboxID string, quota *api
 	prior.TotalMemoryQuota = float64Value(quota.TotalMemoryQuota)
 	prior.TotalDiskQuota = float64Value(quota.TotalDiskQuota)
 	prior.TotalGPUQuota = float64Value(quota.TotalGpuQuota)
-	prior.AllowedGPUTypes = listStringValue(ctx, allowedGPUTypes)
+	prior.AllowedGPUTypes = listStringValue(ctx, gpuTypeStrings(quota.AllowedGpuTypes))
 	prior.MaxCPUPerSandbox = nullableFloat32(quota.MaxCpuPerSandbox)
 	prior.MaxMemoryPerSandbox = nullableFloat32(quota.MaxMemoryPerSandbox)
 	prior.MaxDiskPerSandbox = nullableFloat32(quota.MaxDiskPerSandbox)
