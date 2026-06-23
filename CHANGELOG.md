@@ -1,3 +1,10 @@
+## 0.8.1 (2026-06-23)
+
+NOTES:
+
+- Refactored provider internals for configure handling, collection data source readers, sandbox update orchestration, create-state persistence, GPU projection, and sandbox HTTP test helpers. No provider schemas changed.
+- Updated GitHub install and module examples to `v0.8.1`.
+
 ## 0.8.0 (2026-06-18)
 
 BUG FIXES:
